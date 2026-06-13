@@ -17,10 +17,14 @@ import Profile from './client/Profile';
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [profile, setProfile] = useState(null);
+  const [authError, setAuthError] = useState(null);
   const [pwRecovery, setPwRecovery] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) { console.error('getSession error:', error); setAuthError(error.message); setSession(null); }
+      else setSession(data.session ?? null);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s ?? null);
       if (event === 'PASSWORD_RECOVERY') setPwRecovery(true);
@@ -32,7 +36,10 @@ export default function App() {
   useEffect(() => {
     if (!session) { setProfile(null); return; }
     supabase.from('profiles').select('*').eq('id', session.user.id).single()
-      .then(({ data }) => setProfile(data || null));
+      .then(({ data, error }) => {
+        if (error) { console.error('Profile fetch error:', error); setAuthError('Could not load profile: ' + error.message); setSession(null); }
+        else setProfile(data || null);
+      });
   }, [session?.user?.id]);
 
   if (session === undefined || (session && !profile)) {
@@ -47,7 +54,7 @@ export default function App() {
       <BrowserRouter>
         {!session ? (
           <Routes>
-            <Route path="*" element={<Login />} />
+            <Route path="*" element={<Login authError={authError} />} />
           </Routes>
         ) : needsWelcome ? (
           <Routes>
