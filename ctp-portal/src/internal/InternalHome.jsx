@@ -80,11 +80,13 @@ export default function InternalHome() {
 
       <div className="grid3">
         {clients.map(c => (
-          <button key={c.id} className="card spine" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => nav(`/clients/${c.id}`)}>
-            <h3>{c.name}</h3>
+          <button key={c.id} className="card spine" style={{ textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6 }} onClick={() => nav(`/clients/${c.id}`)}>
+            <h3 style={{ margin: 0 }}>{c.name}</h3>
             <div className="sub">{c.property_type || '—'}</div>
-            <div className="row mt">
+            <div className="row" style={{ marginTop: 4 }}>
               <span className={`chip ${c.status}`}>{STATUS_LABELS[c.status] || c.status}</span>
+            </div>
+            <div className="row" style={{ marginTop: 2 }}>
               <span className="sub">{c.contact_name || '—'}</span>
               <span className={`chip ${c.language}`}>{c.language.toUpperCase()}</span>
             </div>
