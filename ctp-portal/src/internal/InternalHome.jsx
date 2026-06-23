@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 
 const PROPERTY_TYPES = ['Hotel & Spa', 'Boutique hotel', 'Villa / vacation rental', 'Spa', 'Restaurant', 'Independent owner', 'Other'];
 
+const STATUS_LABELS = { proposal_out: 'Proposal out', contract_signed: 'Contract signed', active: 'Active', paused: 'Paused', archived: 'Archived' };
+
 export default function InternalHome() {
   const nav = useNavigate();
   const [clients, setClients] = useState(null);
@@ -79,14 +81,12 @@ export default function InternalHome() {
       <div className="grid3">
         {clients.map(c => (
           <button key={c.id} className="card spine" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => nav(`/clients/${c.id}`)}>
-            <div className="spread">
-              <h3>{c.name}</h3>
-              <span className={`chip ${c.language}`}>{c.language.toUpperCase()}</span>
-            </div>
+            <h3>{c.name}</h3>
             <div className="sub">{c.property_type || '—'}</div>
             <div className="row mt">
-              <span className={`chip ${c.status}`}>{c.status}</span>
-              {c.contact_name && <span className="sub">{c.contact_name}</span>}
+              <span className={`chip ${c.status}`}>{STATUS_LABELS[c.status] || c.status}</span>
+              <span className="sub">{c.contact_name || '—'}</span>
+              <span className={`chip ${c.language}`}>{c.language.toUpperCase()}</span>
             </div>
           </button>
         ))}
