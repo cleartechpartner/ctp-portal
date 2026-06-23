@@ -3,10 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { translate, notify, inviteClient, signedUrl, fmtBytes, monthLabel } from '../lib/api';
 
-const PROJECT_TYPES = ['Guida deployment', 'Verification layer', 'Website / booking', 'Automation', 'Add-on', 'One-off', 'Consulting', 'Other'];
+const PROJECT_TYPES = ['AI guest agents', 'Systems and integrations', 'Consulting and operations', 'Other'];
 const PROJECT_STATUS = ['planned', 'in_progress', 'live', 'paused', 'complete'];
 const UPDATE_CATS = [['kb', 'Knowledge base'], ['prompt', 'Agent tuning'], ['feature', 'New feature'], ['fix', 'Fix'], ['learning', 'Learning'], ['update', 'Update']];
 const DOC_CATS = [['contract', 'Contract'], ['dpa', 'Data processing agreement'], ['onboarding', 'Onboarding'], ['invoice', 'Invoice'], ['general', 'General']];
+const STATUS_LABELS = { proposal_out: 'Proposal out', contract_signed: 'Contract signed', active: 'Active', paused: 'Paused', archived: 'Archived' };
 
 export default function ClientDetail({ profile }) {
   const { id } = useParams();
@@ -34,7 +35,7 @@ export default function ClientDetail({ profile }) {
           </div>
           <div className="row">
             <span className={`chip ${client.language}`}>{client.language === 'es' ? 'Portal in Spanish' : 'Portal in English'}</span>
-            <span className={`chip ${client.status}`}>{client.status}</span>
+            <span className={`chip ${client.status}`}>{STATUS_LABELS[client.status] || client.status}</span>
           </div>
         </div>
       </div>
@@ -110,7 +111,7 @@ function Overview({ client, onSaved, toast }) {
           <div className="fld"><label className="lab">Portal language</label>
             <select className="sel" value={form.language} onChange={F('language')}><option value="en">English</option><option value="es">Español</option></select></div>
           <div className="fld"><label className="lab">Status</label>
-            <select className="sel" value={form.status} onChange={F('status')}><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select></div>
+            <select className="sel" value={form.status} onChange={F('status')}><option value="proposal_out">Proposal out</option><option value="contract_signed">Contract signed</option><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select></div>
         </div>
         <div className="fld"><label className="lab">Internal notes</label><textarea className="ta" value={form.partner_notes || ''} onChange={F('partner_notes')} /></div>
         <button className="btn" onClick={save}>Save profile</button>
