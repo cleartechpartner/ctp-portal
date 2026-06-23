@@ -80,33 +80,19 @@ export default function InternalHome() {
 
       <div className="grid3">
         {clients.map(c => (
-          <button
-            key={c.id}
-            className="card spine"
-            style={{
-              textAlign: 'left',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%',
-              boxSizing: 'border-box',
-              minHeight: 140
-            }}
-            onClick={() => nav(`/clients/${c.id}`)}
-          >
+          <button key={c.id} className="card spine" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => nav(`/clients/${c.id}`)}>
             <div>
-              <h3 style={{ margin: '0 0 4px 0' }}>{c.name}</h3>
-              <div className="sub">{c.property_type || '—'}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                <h3 style={{ margin: 0 }}>{c.name}</h3>
+                <span className={`chip ${c.language}`} style={{ flexShrink: 0 }}>{c.language.toUpperCase()}</span>
+              </div>
+              <div className="sub" style={{ marginTop: 4 }}>{c.property_type || '—'}</div>
             </div>
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ marginBottom: 4 }}>
                 <span className={`chip ${c.status}`}>{STATUS_LABELS[c.status] || c.status}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="sub">{c.contact_name || '—'}</span>
-                <span className={`chip ${c.language}`}>{c.language.toUpperCase()}</span>
-              </div>
+              <div className="sub">{c.contact_name || '—'}</div>
             </div>
           </button>
         ))}
