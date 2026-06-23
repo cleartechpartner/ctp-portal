@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useLang } from '../lib/i18n';
 import { LOGO } from '../lib/logo';
 
-export default function Login({ authError })
+export default function Login({ authError }) {
   const { t, lang, setLang } = useLang();
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
