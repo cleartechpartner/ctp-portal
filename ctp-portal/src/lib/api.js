@@ -11,7 +11,10 @@ async function fx(path, body) {
     body: JSON.stringify(body)
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`);
+  if (!r.ok) {
+    const detail = d.debug ? ' [' + d.debug.join(' → ') + ']' : '';
+    throw new Error((d.error || `Request failed (${r.status})`) + detail);
+  }
   return d;
 }
 
