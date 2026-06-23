@@ -6,15 +6,16 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-sonnet-4-6';
 
 async function getCaller(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
+  if (!SUPABASE_URL || !ANON_KEY) { console.error('Missing SUPABASE_URL or SUPABASE_ANON_KEY env vars'); return null; }
   const uRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` }
   });
-  if (!uRes.ok) return null;
+  if (!uRes.ok) { console.error('Auth check failed:', uRes.status, await uRes.text().catch(() => '')); return null; }
   const user = await uRes.json();
   const pRes = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=role,email,client_id,language`,
