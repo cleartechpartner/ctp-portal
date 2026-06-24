@@ -13,7 +13,7 @@ create table public.clients (
   contact_name text,
   contact_email text,
   language text not null default 'en' check (language in ('en','es')),
-  status text not null default 'active' check (status in ('active','paused','archived')),
+  status text not null default 'active' check (status in ('proposal_out','contract_signed','active','paused','archived')),
   partner_notes text,
   created_at timestamptz not null default now()
 );

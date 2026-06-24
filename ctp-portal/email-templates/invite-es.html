@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenida a tu portal de cliente</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#101826;-webkit-font-smoothing:antialiased">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:32px 16px">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden">
+
+          <!-- Brand bar -->
+          <tr>
+            <td style="height:4px;background:linear-gradient(120deg,#0052FF 0%,#00B8E6 55%,#2ED6A6 100%)"></td>
+          </tr>
+
+          <!-- Logo -->
+          <tr>
+            <td style="padding:28px 36px 0">
+              <img src="https://portal.cleartechpartner.com/logo.png" alt="Clear Tech Partner" width="44" height="44" style="display:block">
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:20px 36px 32px">
+              <h1 style="font-size:22px;font-weight:700;color:#101826;margin:0 0 16px;line-height:1.3">Hola {{full_name}}</h1>
+              <p style="font-size:15px;line-height:1.65;color:#33404f;margin:0 0 14px">
+                Tu portal de cliente ya est&aacute; listo. Aqu&iacute; encontrar&aacute;s tus informes mensuales, las actualizaciones de tus proyectos y tus documentos, todo en un solo lugar seguro.
+              </p>
+              <p style="font-size:15px;line-height:1.65;color:#33404f;margin:0 0 24px">
+                Pulsa el bot&oacute;n para crear tu contrase&ntilde;a y acceder por primera vez.
+              </p>
+
+              <!-- CTA -->
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:10px;background:#0052FF">
+                    <a href="{{action_link}}" style="display:inline-block;padding:14px 28px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:.02em">Activar mi acceso</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size:12px;line-height:1.5;color:#8b97a5;margin:28px 0 0">
+                Si el bot&oacute;n no funciona, copia y pega este enlace en tu navegador:<br>
+                <a href="{{action_link}}" style="color:#0052FF;word-break:break-all;font-size:12px">{{action_link}}</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

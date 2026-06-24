@@ -60,21 +60,28 @@ exports.handler = async function(event) {
     if (RESEND_KEY && actionLink) {
       var es = lang === 'es';
       var subject = es ? 'Bienvenida a tu portal de Clear Tech Partner' : 'Welcome to your Clear Tech Partner portal';
-      var html = '<!doctype html><html><body style="margin:0;background:#f7f9fb;font-family:Helvetica,Arial,sans-serif;color:#101826">' +
-      '<div style="max-width:560px;margin:32px auto;background:#ffffff;border:1px solid #e3e9f0;border-radius:12px;overflow:hidden">' +
-        '<div style="height:5px;background:linear-gradient(120deg,#0052FF 0%,#00B8E6 55%,#2ED6A6 100%)"></div>' +
-        '<div style="padding:32px 36px">' +
-          '<p style="font-size:11px;letter-spacing:3px;color:#5d6b7e;margin:0 0 18px">CLEAR TECH PARTNER</p>' +
-          '<h1 style="font-size:20px;margin:0 0 14px">' + (es ? 'Hola ' + (full_name || '') : 'Hi ' + (full_name || '')) + '</h1>' +
-          '<div style="font-size:15px;line-height:1.6;color:#33404f">' +
+      var html = '<!doctype html><html><body style="margin:0;padding:0;background:#f0f2f5;font-family:Arial,Helvetica,sans-serif;color:#101826">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:32px 16px"><tr><td align="center">' +
+      '<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #e2e4e9;border-radius:12px;overflow:hidden">' +
+        '<tr><td style="height:4px;background:linear-gradient(120deg,#0052FF 0%,#00B8E6 55%,#2ED6A6 100%)"></td></tr>' +
+        '<tr><td style="padding:28px 36px 0"><img src="' + SITE + '/logo.png" alt="Clear Tech Partner" width="44" height="44" style="display:block"></td></tr>' +
+        '<tr><td style="padding:20px 36px 32px">' +
+          '<h1 style="font-size:22px;font-weight:700;color:#101826;margin:0 0 16px;line-height:1.3">' + (es ? 'Hola ' + (full_name || '') : 'Hi ' + (full_name || '')) + '</h1>' +
+          '<p style="font-size:15px;line-height:1.65;color:#33404f;margin:0 0 14px">' +
             (es
-              ? 'Tu portal de cliente ya esta listo. Aqui encontraras tus informes mensuales, las mejoras que vamos realizando y tus documentos — todo en un solo lugar seguro.<br/><br/>Pulsa el boton para crear tu contrasena y entrar por primera vez.'
-              : 'Your client portal is ready. This is where you will find your monthly reports, the improvements we make along the way, and your documents — all in one secure place.<br/><br/>Click below to set your password and sign in for the first time.') +
-          '</div>' +
-          '<a href="' + actionLink + '" style="display:inline-block;margin-top:22px;background:#0052FF;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:9px;font-size:14px;font-weight:600">' + (es ? 'Activar mi acceso' : 'Set up my access') + '</a>' +
-          '<p style="font-size:12px;color:#8b97a5;margin-top:30px">Clear Tech Partner · Mahon, Menorca · cleartechpartner.com</p>' +
-        '</div>' +
-      '</div></body></html>';
+              ? 'Tu portal de cliente ya est\u00e1 listo. Aqu\u00ed encontrar\u00e1s tus informes mensuales, las actualizaciones de tus proyectos y tus documentos, todo en un solo lugar seguro.'
+              : 'Your client portal is ready. This is where you\'ll find your monthly reports, project updates, and documents, all in one secure place.') +
+          '</p>' +
+          '<p style="font-size:15px;line-height:1.65;color:#33404f;margin:0 0 24px">' +
+            (es ? 'Pulsa el bot\u00f3n para crear tu contrase\u00f1a y acceder por primera vez.' : 'Click below to set your password and sign in for the first time.') +
+          '</p>' +
+          '<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:10px;background:#0052FF">' +
+          '<a href="' + actionLink + '" style="display:inline-block;padding:14px 28px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:.02em">' + (es ? 'Activar mi acceso' : 'Set up my access') + '</a>' +
+          '</td></tr></table>' +
+          '<p style="font-size:12px;line-height:1.5;color:#8b97a5;margin:28px 0 0">' + (es ? 'Si el bot\u00f3n no funciona, copia y pega este enlace:' : 'If the button doesn\'t work, copy and paste this link:') + '<br><a href="' + actionLink + '" style="color:#0052FF;word-break:break-all;font-size:12px">' + actionLink + '</a></p>' +
+        '</td></tr>' +
+      '</table>' +
+      '</td></tr></table></body></html>';
       var r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + RESEND_KEY },
