@@ -6,8 +6,12 @@ import { translate, notify, inviteClient, signedUrl, fmtBytes, monthLabel } from
 const PROJECT_TYPES = ['AI guest agents', 'Systems and integrations', 'Consulting and operations', 'Other'];
 const PROJECT_STATUS = ['planned', 'in_progress', 'live', 'paused', 'complete'];
 const UPDATE_CATS = [['kb', 'Knowledge base'], ['prompt', 'Agent tuning'], ['feature', 'New feature'], ['fix', 'Fix'], ['learning', 'Learning'], ['update', 'Update']];
-const DOC_CATS = [['contract', 'Contract'], ['dpa', 'Data processing agreement'], ['onboarding', 'Onboarding'], ['invoice', 'Invoice'], ['general', 'General']];
+const DOC_CATS = [['contract', 'Contract'], ['dpa', 'Data processing agreement'], ['onboarding', 'Onboarding'], ['general', 'General']];
 const STATUS_LABELS = { proposal_out: 'Proposal out', contract_signed: 'Contract signed', active: 'Active', paused: 'Paused', archived: 'Archived' };
+
+const IconPlus = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
+const IconX = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
+const IconEdit = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9 1.5l2.5 2.5M1.5 11.5l1-3 7-7 2.5 2.5-7 7-3 1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>;
 
 export default function ClientDetail({ profile }) {
   const { id } = useParams();
@@ -59,13 +63,16 @@ export default function ClientDetail({ profile }) {
   );
 }
 
-/* ---------- Overview: profile + flexible project line items ---------- */
+/* ---------- Overview: read-only by default, edit on demand ---------- */
 function Overview({ client, onSaved, toast }) {
   const [form, setForm] = useState(client);
+  const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [projects, setProjects] = useState([]);
   const [pForm, setPForm] = useState({ title: '', type: PROJECT_TYPES[0], status: 'planned', description: '', notes: '' });
   const [adding, setAdding] = useState(false);
+
+  useEffect(() => { setForm(client); }, [client]);
 
   const loadProjects = async () => {
     const { data } = await supabase.from('projects').select('*').eq('client_id', client.id).order('created_at');
@@ -80,8 +87,9 @@ function Overview({ client, onSaved, toast }) {
       contact_email: form.contact_email, language: form.language, status: form.status, partner_notes: form.partner_notes
     }).eq('id', client.id);
     if (error) { toast('Save failed'); return; }
-    setDirty(false); toast('Client saved'); onSaved();
+    setDirty(false); setEditing(false); toast('Client saved'); onSaved();
   };
+  const cancel = () => { setForm(client); setDirty(false); setEditing(false); };
 
   const addProject = async (e) => {
     e.preventDefault();
@@ -103,25 +111,55 @@ function Overview({ client, onSaved, toast }) {
   return (
     <>
       <div className="card">
-        <h3>Client profile</h3>
-        <div className="grid2 mt">
-          <div className="fld"><label className="lab">Name</label><input className="ti" value={form.name || ''} onChange={F('name')} /></div>
-          <div className="fld"><label className="lab">Type</label><input className="ti" value={form.property_type || ''} onChange={F('property_type')} /></div>
-          <div className="fld"><label className="lab">Contact name</label><input className="ti" value={form.contact_name || ''} onChange={F('contact_name')} /></div>
-          <div className="fld"><label className="lab">Contact email</label><input className="ti" value={form.contact_email || ''} onChange={F('contact_email')} /></div>
-          <div className="fld"><label className="lab">Portal language</label>
-            <select className="sel" value={form.language} onChange={F('language')}><option value="en">English</option><option value="es">Español</option></select></div>
-          <div className="fld"><label className="lab">Status</label>
-            <select className="sel" value={form.status} onChange={F('status')}><option value="proposal_out">Proposal out</option><option value="contract_signed">Contract signed</option><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select></div>
+        <div className="spread">
+          <h3>Client profile</h3>
+          {!editing && (
+            <button className="btn sm gh icon-text-btn" onClick={() => setEditing(true)}><IconEdit /> Edit</button>
+          )}
         </div>
-        <div className="fld"><label className="lab">Internal notes</label><textarea className="ta" value={form.partner_notes || ''} onChange={F('partner_notes')} /></div>
-        {dirty && <button className="btn" onClick={save}>Save profile</button>}
+
+        {!editing ? (
+          <div className="cd-readonly mt">
+            <div className="cd-grid">
+              <CdRow label="Name" value={form.name} />
+              <CdRow label="Type" value={form.property_type} />
+              <CdRow label="Contact name" value={form.contact_name} />
+              <CdRow label="Contact email" value={form.contact_email} />
+              <CdRow label="Portal language" value={form.language === 'es' ? 'Español' : 'English'} />
+              <CdRow label="Status" value={STATUS_LABELS[form.status] || form.status} />
+            </div>
+            <div className="cd-row-full">
+              <div className="lab">Internal notes</div>
+              <div className="cd-val cd-val-multiline">{form.partner_notes || '—'}</div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid2 mt">
+              <div className="fld"><label className="lab">Name</label><input className="ti" value={form.name || ''} onChange={F('name')} /></div>
+              <div className="fld"><label className="lab">Type</label><input className="ti" value={form.property_type || ''} onChange={F('property_type')} /></div>
+              <div className="fld"><label className="lab">Contact name</label><input className="ti" value={form.contact_name || ''} onChange={F('contact_name')} /></div>
+              <div className="fld"><label className="lab">Contact email</label><input className="ti" value={form.contact_email || ''} onChange={F('contact_email')} /></div>
+              <div className="fld"><label className="lab">Portal language</label>
+                <select className="sel" value={form.language} onChange={F('language')}><option value="en">English</option><option value="es">Español</option></select></div>
+              <div className="fld"><label className="lab">Status</label>
+                <select className="sel" value={form.status} onChange={F('status')}><option value="proposal_out">Proposal out</option><option value="contract_signed">Contract signed</option><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select></div>
+            </div>
+            <div className="fld"><label className="lab">Internal notes</label><textarea className="ta" value={form.partner_notes || ''} onChange={F('partner_notes')} /></div>
+            <div className="row">
+              <button className="btn" onClick={save} disabled={!dirty}>Save profile</button>
+              <button className="btn gh" onClick={cancel}>Cancel</button>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="card mt2">
         <div className="spread">
-          <div><h3>Projects</h3><div className="sub">The flexible line items — Guida, bookings, automations, one-offs.</div></div>
-          <button className="btn sm gh" onClick={() => setAdding(a => !a)}>{adding ? 'Close' : 'Add project'}</button>
+          <div><h3>Projects</h3><div className="sub">The flexible line items. Guida, bookings, automations, one-offs.</div></div>
+          <button className="icon-btn icon-btn-primary" onClick={() => setAdding(a => !a)} title={adding ? 'Close' : 'Add project'} aria-label={adding ? 'Close' : 'Add project'}>
+            {adding ? <IconX /> : <IconPlus />}
+          </button>
         </div>
 
         {adding && (
@@ -151,10 +189,17 @@ function Overview({ client, onSaved, toast }) {
                 {p.description && <div className="meta">{p.description}</div>}
               </div>
               <div className="row">
-                <select className="sel" style={{ width: 'auto', padding: '6px 10px', fontSize: '.8rem' }} value={p.status} onChange={e => setStatus(p, e.target.value)}>
+                <select
+                  className={`status-pill status-pill-${p.status}`}
+                  value={p.status}
+                  onChange={e => setStatus(p, e.target.value)}
+                  aria-label="Project status"
+                >
                   {PROJECT_STATUS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                 </select>
-                <button className="btn sm dgr" onClick={() => removeProject(p)}>Delete</button>
+                <button className="icon-btn icon-btn-danger" onClick={() => removeProject(p)} title="Delete project" aria-label="Delete project">
+                  <IconX />
+                </button>
               </div>
             </div>
           ))}
@@ -164,16 +209,26 @@ function Overview({ client, onSaved, toast }) {
   );
 }
 
-/* ---------- Reports: compose EN, translate, publish bilingual ---------- */
+function CdRow({ label, value }) {
+  return (
+    <div className="cd-row">
+      <div className="lab">{label}</div>
+      <div className="cd-val">{value || '—'}</div>
+    </div>
+  );
+}
+
+/* ---------- Reports: compose EN, translate, attach file, publish bilingual ---------- */
 function ReportsTab({ client, toast }) {
   const [reports, setReports] = useState([]);
-  const [editing, setEditing] = useState(null); // report object or 'new'
+  const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState('');
 
   const blank = () => ({
     client_id: client.id,
     month: new Date().toISOString().slice(0, 7),
-    title_en: '', title_es: '', body_en: '', body_es: '', status: 'draft'
+    title_en: '', title_es: '', body_en: '', body_es: '', status: 'draft',
+    attachment_path: null, attachment_name: null
   });
 
   const load = async () => {
@@ -203,7 +258,7 @@ function ReportsTab({ client, toast }) {
         r.body_en ? translate(r.body_en, 'es') : ''
       ]);
       setR(x => ({ ...x, title_es: ti, body_es: bo }));
-      toast('Spanish version ready — review it before publishing');
+      toast('Spanish version ready. Review it before publishing.');
     } catch (e) { toast('Translation failed: ' + e.message); }
     setBusy('');
   };
@@ -212,7 +267,6 @@ function ReportsTab({ client, toast }) {
     setBusy('publish');
     try {
       let row = { ...r };
-      // Spanish-language clients always get a reviewed or auto Spanish version.
       if (client.language === 'es' && r.body_en && !r.body_es) {
         const [ti, bo] = await Promise.all([
           r.title_en ? translate(r.title_en, 'es') : '',
@@ -228,27 +282,33 @@ function ReportsTab({ client, toast }) {
       else res = await supabase.from('reports').insert(row).select().single();
       if (res.error) throw new Error(res.error.message);
       await notify('report_published', { client_id: client.id, month: monthLabel(row.month, client.language) });
-      toast('Published — client notified');
+      toast('Published. Client notified.');
       setEditing(null); load();
     } catch (e) { toast('Publish failed: ' + e.message); }
     setBusy('');
   };
 
   if (editing) return <ReportEditor r={editing === 'new' ? blank() : editing} busy={busy}
-    onCancel={() => setEditing(null)} onSave={saveDraft} onTranslate={doTranslate} onPublish={publish} clientLang={client.language} />;
+    onCancel={() => setEditing(null)} onSave={saveDraft} onTranslate={doTranslate} onPublish={publish}
+    clientLang={client.language} clientId={client.id} toast={toast} />;
 
   return (
     <div className="card">
       <div className="spread">
         <div><h3>Monthly reports</h3><div className="sub">Drafts stay private. Publishing emails {client.contact_name || 'the client'}.</div></div>
-        <button className="btn sm" onClick={() => setEditing('new')}>New report</button>
+        <button className="icon-btn icon-btn-primary" onClick={() => setEditing('new')} title="New report" aria-label="New report">
+          <IconPlus />
+        </button>
       </div>
       <div className="mt">
         {reports.length === 0 && <div className="empty">No reports yet. The first one sets the tone.</div>}
         {reports.map(r => (
           <div key={r.id} className="item">
             <div>
-              <div className="nm">{monthLabel(r.month)} {r.title_en ? `— ${r.title_en}` : ''}</div>
+              <div className="nm">
+                {monthLabel(r.month)} {r.title_en ? `· ${r.title_en}` : ''}
+                {r.attachment_name && <span className="attach-badge" title={r.attachment_name}>PDF</span>}
+              </div>
               <div className="meta">{r.published_at ? 'Published ' + new Date(r.published_at).toLocaleDateString(client.language === 'es' ? 'es-ES' : 'en-US') : 'Draft'}</div>
             </div>
             <div className="row">
@@ -262,9 +322,40 @@ function ReportsTab({ client, toast }) {
   );
 }
 
-function ReportEditor({ r: initial, busy, onCancel, onSave, onTranslate, onPublish, clientLang }) {
+function ReportEditor({ r: initial, busy, onCancel, onSave, onTranslate, onPublish, clientLang, clientId, toast }) {
   const [r, setR] = useState(initial);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const F = (k) => (e) => setR(x => ({ ...x, [k]: e.target.value }));
+
+  const uploadAttachment = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingFile(true);
+    try {
+      const path = `${clientId}/reports/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
+      const { error: upErr } = await supabase.storage.from('client-docs').upload(path, file);
+      if (upErr) throw new Error(upErr.message);
+      setR(x => ({ ...x, attachment_path: path, attachment_name: file.name }));
+      toast('File attached. Save the draft to keep it.');
+    } catch (err) { toast('Upload failed: ' + err.message); }
+    setUploadingFile(false);
+    e.target.value = '';
+  };
+
+  const removeAttachment = async () => {
+    if (!confirm('Remove this attachment?')) return;
+    if (r.attachment_path) {
+      try { await supabase.storage.from('client-docs').remove([r.attachment_path]); } catch {}
+    }
+    setR(x => ({ ...x, attachment_path: null, attachment_name: null }));
+  };
+
+  const previewAttachment = async () => {
+    if (!r.attachment_path) return;
+    try { window.open(await signedUrl(r.attachment_path), '_blank'); }
+    catch { toast('Could not open file'); }
+  };
+
   return (
     <div className="card spine">
       <div className="spread">
@@ -278,17 +369,34 @@ function ReportEditor({ r: initial, busy, onCancel, onSave, onTranslate, onPubli
       <div className="fld"><label className="lab">Report (English)</label>
         <textarea className="ta big" value={r.body_en || ''} onChange={F('body_en')} placeholder={'What happened this month, what improved, what\u2019s next.'} /></div>
 
+      <div className="fld">
+        <label className="lab">Attached file (optional)</label>
+        {r.attachment_name ? (
+          <div className="attach-row">
+            <button type="button" className="link-btn" onClick={previewAttachment}>{r.attachment_name}</button>
+            <button type="button" className="icon-btn icon-btn-danger" onClick={removeAttachment} title="Remove attachment" aria-label="Remove attachment">
+              <IconX />
+            </button>
+          </div>
+        ) : (
+          <label className="btn sm gh" style={{ cursor: 'pointer', display: 'inline-block' }}>
+            {uploadingFile ? 'Uploading…' : 'Upload PDF or document'}
+            <input type="file" hidden onChange={uploadAttachment} disabled={uploadingFile} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
+          </label>
+        )}
+      </div>
+
       <div className="row">
         <button className="btn gh sm" disabled={busy === 'translate' || !r.body_en} onClick={() => onTranslate(r, setR)}>
           {busy === 'translate' ? 'Translating…' : 'Translate to Spanish'}
         </button>
-        <span className="sub">{clientLang === 'es' ? 'This client reads the portal in Spanish — publishing auto-translates if you skip this.' : 'Optional for this client.'}</span>
+        <span className="sub">{clientLang === 'es' ? 'This client reads the portal in Spanish. Publishing auto-translates if you skip this.' : 'Optional for this client.'}</span>
       </div>
 
       {(r.title_es || r.body_es) && (
         <div className="mt2">
-          <div className="fld"><label className="lab">Title (Spanish — editable)</label><input className="ti" value={r.title_es || ''} onChange={F('title_es')} /></div>
-          <div className="fld"><label className="lab">Report (Spanish — editable)</label><textarea className="ta big" value={r.body_es || ''} onChange={F('body_es')} /></div>
+          <div className="fld"><label className="lab">Title (Spanish, editable)</label><input className="ti" value={r.title_es || ''} onChange={F('title_es')} /></div>
+          <div className="fld"><label className="lab">Report (Spanish, editable)</label><textarea className="ta big" value={r.body_es || ''} onChange={F('body_es')} /></div>
         </div>
       )}
 
@@ -334,7 +442,7 @@ function UpdatesTab({ client, toast }) {
   return (
     <div className="card">
       <h3>Updates log</h3>
-      <div className="sub">Log every improvement as you make it — the month-end report writes itself.</div>
+      <div className="sub">Log every improvement as you make it. The month-end report writes itself.</div>
       <form onSubmit={add} className="mt">
         <div className="row">
           <select className="sel" style={{ width: 'auto' }} value={cat} onChange={e => setCat(e.target.value)}>
@@ -354,7 +462,9 @@ function UpdatesTab({ client, toast }) {
               <div className="mt" style={{ fontSize: '.92rem' }}>{u.body_en}</div>
               {u.body_es && <div className="meta mt">ES: {u.body_es}</div>}
             </div>
-            <button className="btn sm dgr" onClick={() => remove(u)}>Delete</button>
+            <button className="icon-btn icon-btn-danger" onClick={() => remove(u)} title="Delete update" aria-label="Delete update">
+              <IconX />
+            </button>
           </div>
         ))}
       </div>
@@ -362,12 +472,13 @@ function UpdatesTab({ client, toast }) {
   );
 }
 
-/* ---------- Documents: upload to client folder, optional notify ---------- */
+/* ---------- Documents: upload to client folder, optional notify, filter ---------- */
 function DocumentsTab({ client, toast }) {
   const [docs, setDocs] = useState([]);
   const [cat, setCat] = useState('general');
   const [notifyClient, setNotifyClient] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState('all');
 
   const load = async () => {
     const { data } = await supabase.from('documents').select('*').eq('client_id', client.id).order('created_at', { ascending: false });
@@ -388,7 +499,7 @@ function DocumentsTab({ client, toast }) {
       });
       if (rowErr) throw new Error(rowErr.message);
       await notify('document_uploaded', { client_id: client.id, name: file.name, notifyClient });
-      toast(notifyClient ? 'Uploaded — client notified' : 'Uploaded');
+      toast(notifyClient ? 'Uploaded. Client notified.' : 'Uploaded');
       load();
     } catch (err) { toast('Upload failed: ' + err.message); }
     setBusy(false);
@@ -406,10 +517,23 @@ function DocumentsTab({ client, toast }) {
     load();
   };
 
+  // Build filter options from actual categories present (so legacy 'invoice' docs still show as filter if any exist)
+  const presentCategories = [...new Set(docs.map(d => d.category))];
+  const filterOptions = [['all', 'All']];
+  DOC_CATS.forEach(([v, l]) => { if (presentCategories.includes(v) || true) filterOptions.push([v, l]); });
+  // Add legacy categories present in data but not in DOC_CATS (e.g. invoice)
+  presentCategories.forEach(c => {
+    if (!filterOptions.find(([v]) => v === c)) {
+      filterOptions.push([c, c.charAt(0).toUpperCase() + c.slice(1)]);
+    }
+  });
+
+  const visibleDocs = filter === 'all' ? docs : docs.filter(d => d.category === filter);
+
   return (
     <div className="card">
       <h3>Documents</h3>
-      <div className="sub">Contracts, DPAs, onboarding — the client sees these in their portal.</div>
+      <div className="sub">Contracts, DPAs, onboarding. The client sees these in their portal.</div>
       <div className="row mt">
         <select className="sel" style={{ width: 'auto' }} value={cat} onChange={e => setCat(e.target.value)}>
           {DOC_CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -422,17 +546,35 @@ function DocumentsTab({ client, toast }) {
           <input type="checkbox" checked={notifyClient} onChange={e => setNotifyClient(e.target.checked)} /> Email the client
         </label>
       </div>
+
+      {docs.length > 0 && (
+        <div className="doc-filters mt2">
+          {filterOptions.map(([v, l]) => (
+            <button
+              key={v}
+              className={`filter-chip${filter === v ? ' on' : ''}`}
+              onClick={() => setFilter(v)}
+            >
+              {l}
+              {v !== 'all' && <span className="filter-count">{docs.filter(d => d.category === v).length}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mt2">
-        {docs.length === 0 && <div className="empty">No documents yet.</div>}
-        {docs.map(d => (
+        {visibleDocs.length === 0 && <div className="empty">{filter === 'all' ? 'No documents yet.' : 'No documents in this category.'}</div>}
+        {visibleDocs.map(d => (
           <div key={d.id} className="item">
             <div>
               <div className="nm">{d.name}</div>
-              <div className="meta">{(DOC_CATS.find(c => c[0] === d.category) || [])[1]} · {fmtBytes(d.size_bytes)} · {d.uploaded_by === 'client' ? 'Uploaded by client' : 'Uploaded by CTP'}</div>
+              <div className="meta">{(DOC_CATS.find(c => c[0] === d.category) || [, d.category])[1]} · {fmtBytes(d.size_bytes)} · {d.uploaded_by === 'client' ? 'Uploaded by client' : 'Uploaded by CTP'}</div>
             </div>
             <div className="row">
               <button className="btn sm gh" onClick={() => open(d)}>Open</button>
-              <button className="btn sm dgr" onClick={() => remove(d)}>Delete</button>
+              <button className="icon-btn icon-btn-danger" onClick={() => remove(d)} title="Delete document" aria-label="Delete document">
+                <IconX />
+              </button>
             </div>
           </div>
         ))}
@@ -461,7 +603,7 @@ function AccessTab({ client, toast }) {
     try {
       const res = await inviteClient({ client_id: client.id, email: email.trim(), full_name: name.trim(), language: client.language });
       if (res.emailed) toast('Invite sent');
-      else if (res.action_link) { setManualLink(res.action_link); toast('Invite created — email not configured, share the link below'); }
+      else if (res.action_link) { setManualLink(res.action_link); toast('Invite created. Email not configured. Share the link below.'); }
       load();
     } catch (err) { toast('Invite failed: ' + err.message); }
     setBusy(false);
@@ -470,7 +612,7 @@ function AccessTab({ client, toast }) {
   return (
     <div className="card">
       <h3>Portal access</h3>
-      <div className="sub">Invite {client.contact_name || 'the client'} — they get a branded welcome email in {client.language === 'es' ? 'Spanish' : 'English'} with a secure setup link.</div>
+      <div className="sub">Invite {client.contact_name || 'the client'}. They get a branded welcome email in {client.language === 'es' ? 'Spanish' : 'English'} with a secure setup link.</div>
       <form onSubmit={invite} className="mt">
         <div className="grid2">
           <div className="fld"><label className="lab">Full name</label><input className="ti" value={name} onChange={e => setName(e.target.value)} /></div>

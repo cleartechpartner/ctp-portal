@@ -220,3 +220,44 @@ h1,h2,h3,.display{font-family:var(--font-display)}
   .co-row-work{margin-top:4px}
   .co-row-team{display:none}
 }
+
+/* ===== Client Detail (read-only rows, icon buttons, status pills, filters) ===== */
+.cd-readonly{}
+.cd-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px;margin-bottom:18px}
+@media(max-width:700px){.cd-grid{grid-template-columns:1fr;gap:14px}}
+.cd-row{display:flex;flex-direction:column;gap:4px}
+.cd-row .lab{margin-bottom:0}
+.cd-val{font-size:.94rem;color:var(--ink);font-weight:500}
+.cd-row-full{margin-top:6px}
+.cd-row-full .lab{margin-bottom:6px}
+.cd-val-multiline{white-space:pre-wrap;color:var(--ink);font-weight:400;font-size:.92rem;line-height:1.6;padding:10px 13px;background:var(--bg);border-radius:8px;border:1px solid var(--line);min-height:42px}
+
+/* Icon buttons */
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;padding:0;font-family:inherit;transition:background .1s,color .1s,border-color .1s}
+.icon-btn:hover{background:var(--bg);color:var(--ink)}
+.icon-btn-primary{background:var(--grad);border:none;color:#fff}
+.icon-btn-primary:hover{opacity:.92;color:#fff}
+.icon-btn-danger:hover{background:#fdf3f2;border-color:#f0c8c4;color:var(--danger)}
+.icon-text-btn{display:inline-flex;align-items:center;gap:6px}
+
+/* Project status pills (styled select) */
+.status-pill{appearance:none;-webkit-appearance:none;-moz-appearance:none;border:none;border-radius:99px;padding:5px 14px;font-size:.74rem;font-weight:600;letter-spacing:.04em;text-transform:capitalize;cursor:pointer;font-family:inherit;background-image:none;text-align:center;min-width:96px}
+.status-pill:focus{outline:2px solid var(--blue);outline-offset:2px}
+.status-pill-planned{background:#fdf8e7;color:#8a6d1a;border:1px solid #ecdfb0}
+.status-pill-in_progress{background:#f0f5ff;color:#0048d6;border:1px solid #c8d9ff}
+.status-pill-live{background:#effaf5;color:#0b7d5c;border:1px solid #bfe9da}
+.status-pill-paused{background:var(--bg);color:var(--dim);border:1px solid var(--line)}
+.status-pill-complete{background:var(--bg);color:var(--dim);border:1px solid var(--line)}
+
+/* Report attachment badge */
+.attach-badge{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.06em;background:#f0f5ff;color:#0048d6;padding:2px 7px;border-radius:4px;margin-left:8px;vertical-align:middle}
+.attach-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--bg);border:1px solid var(--line);border-radius:9px}
+.attach-row .link-btn{font-size:.9rem}
+
+/* Documents filter chips */
+.doc-filters{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.filter-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--dim);font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;transition:background .12s,color .12s,border-color .12s}
+.filter-chip:hover{background:var(--bg);color:var(--ink)}
+.filter-chip.on{background:var(--blue-soft);color:var(--blue);border-color:var(--blue)}
+.filter-count{font-size:.7rem;background:rgba(0,0,0,.06);color:inherit;padding:1px 7px;border-radius:99px;font-weight:600}
+.filter-chip.on .filter-count{background:var(--blue);color:#fff}
