@@ -62,6 +62,7 @@ export default function ClientDetail({ profile }) {
 /* ---------- Overview: profile + flexible project line items ---------- */
 function Overview({ client, onSaved, toast }) {
   const [form, setForm] = useState(client);
+  const [dirty, setDirty] = useState(false);
   const [projects, setProjects] = useState([]);
   const [pForm, setPForm] = useState({ title: '', type: PROJECT_TYPES[0], status: 'planned', description: '', notes: '' });
   const [adding, setAdding] = useState(false);
@@ -72,14 +73,14 @@ function Overview({ client, onSaved, toast }) {
   };
   useEffect(() => { loadProjects(); }, [client.id]);
 
-  const F = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+  const F = (k) => (e) => { setForm(f => ({ ...f, [k]: e.target.value })); setDirty(true); };
   const save = async () => {
     const { error } = await supabase.from('clients').update({
       name: form.name, property_type: form.property_type, contact_name: form.contact_name,
       contact_email: form.contact_email, language: form.language, status: form.status, partner_notes: form.partner_notes
     }).eq('id', client.id);
     if (error) { toast('Save failed'); return; }
-    toast('Client saved'); onSaved();
+    setDirty(false); toast('Client saved'); onSaved();
   };
 
   const addProject = async (e) => {
@@ -114,7 +115,7 @@ function Overview({ client, onSaved, toast }) {
             <select className="sel" value={form.status} onChange={F('status')}><option value="proposal_out">Proposal out</option><option value="contract_signed">Contract signed</option><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select></div>
         </div>
         <div className="fld"><label className="lab">Internal notes</label><textarea className="ta" value={form.partner_notes || ''} onChange={F('partner_notes')} /></div>
-        <button className="btn" onClick={save}>Save profile</button>
+        {dirty && <button className="btn" onClick={save}>Save profile</button>}
       </div>
 
       <div className="card mt2">
@@ -248,7 +249,7 @@ function ReportsTab({ client, toast }) {
           <div key={r.id} className="item">
             <div>
               <div className="nm">{monthLabel(r.month)} {r.title_en ? `— ${r.title_en}` : ''}</div>
-              <div className="meta">{r.published_at ? 'Published ' + new Date(r.published_at).toLocaleDateString('en-GB') : 'Draft'}</div>
+              <div className="meta">{r.published_at ? 'Published ' + new Date(r.published_at).toLocaleDateString(client.language === 'es' ? 'es-ES' : 'en-US') : 'Draft'}</div>
             </div>
             <div className="row">
               <span className={`chip ${r.status}`}>{r.status}</span>
@@ -349,7 +350,7 @@ function UpdatesTab({ client, toast }) {
           <div key={u.id} className="item">
             <div style={{ flex: 1 }}>
               <div className="row"><span className="chip">{(UPDATE_CATS.find(c => c[0] === u.category) || [])[1] || u.category}</span>
-                <span className="meta">{new Date(u.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+                <span className="meta">{new Date(u.date).toLocaleDateString(client.language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
               <div className="mt" style={{ fontSize: '.92rem' }}>{u.body_en}</div>
               {u.body_es && <div className="meta mt">ES: {u.body_es}</div>}
             </div>
