@@ -261,3 +261,12 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .filter-chip.on{background:var(--blue-soft);color:var(--blue);border-color:var(--blue)}
 .filter-count{font-size:.7rem;background:rgba(0,0,0,.06);color:inherit;padding:1px 7px;border-radius:99px;font-weight:600}
 .filter-chip.on .filter-count{background:var(--blue);color:#fff}
+
+/* Client-side report attachment download card */
+.report-attach{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:background .12s,border-color .12s}
+.report-attach:hover{background:var(--blue-soft);border-color:var(--blue)}
+.report-attach-icon{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:8px;background:var(--panel);color:var(--blue);flex-shrink:0;border:1px solid var(--line)}
+.report-attach-body{flex:1;min-width:0}
+.report-attach-name{font-size:.92rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.report-attach-meta{font-size:.78rem;color:var(--dim);margin-top:2px}
+.report-attach-action{color:var(--blue);flex-shrink:0}
