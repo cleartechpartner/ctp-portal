@@ -346,6 +346,19 @@ export default function Studio(){
 
   const toast=useCallback((m)=>{setToastMsg(m);setTimeout(()=>setToastMsg(''),2200);},[]);
 
+  // Sync view with URL hash from sidebar
+  useEffect(()=>{
+    const onHash=()=>{
+      const h=window.location.hash.replace('#','');
+      if(h==='library'){setView('lib');loadLib();}
+      else if(h==='settings')setView('set');
+      else if(!h||h==='')setView('dash');
+    };
+    onHash();
+    window.addEventListener('hashchange',onHash);
+    return ()=>window.removeEventListener('hashchange',onHash);
+  },[]);
+
   useEffect(()=>{
     (async()=>{
       try{const r=await storage.get('ctp-s');if(r&&r.value){const v=JSON.parse(r.value);setSettings(s=>({...DEF_SETTINGS,...v}));}}catch(e){}
@@ -356,7 +369,7 @@ export default function Studio(){
   const loadLib=async()=>{try{const r=await storage.get('ctp-lib');if(r&&r.value)setLibItems(JSON.parse(r.value));}catch(e){setLibItems([]);}};
   const saveLib=async(items)=>{try{await storage.set('ctp-lib',JSON.stringify(items));setLibItems(items);return true;}catch(e){toast('Save failed');return false;}};
 
-  const goTo=(v,mid)=>{setView(v);setModId(mid||null);if(v!=='mod'){setForm({});setOutputs([]);setError('');}setRevInputs({});window.scrollTo?.({top:0});};
+  const goTo=(v,mid)=>{setView(v);setModId(mid||null);if(v!=='mod'){setForm({});setOutputs([]);setError('');}setRevInputs({});window.scrollTo?.({top:0});if(v==='dash')window.location.hash='';else if(v==='lib')window.location.hash='library';else if(v==='set')window.location.hash='settings';};
 
   const mod=modId?MODULES.find(m=>m.id===modId):null;
 
@@ -454,17 +467,6 @@ export default function Studio(){
     <div className="studio">
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       <style>{CSS}</style>
-      <header className="hdr">
-        <button className="brand" onClick={()=>goTo('dash')}>
-          <img src={LOGO} alt="Clear Tech Partner" className="logo"/>
-          <span className="wmark">Clear Tech Partner<small>Content Studio</small></span>
-        </button>
-        <nav className="tnav">
-          <button className={view==='dash'||view==='mod'?'on':''} onClick={()=>goTo('dash')}>Studio</button>
-          <button className={view==='lib'?'on':''} onClick={()=>{goTo('lib');loadLib();}}>Library</button>
-          <button className={view==='set'?'on':''} onClick={()=>goTo('set')}>Settings</button>
-        </nav>
-      </header>
 
       <main className="mn">
       {view==='dash'&&(<>
