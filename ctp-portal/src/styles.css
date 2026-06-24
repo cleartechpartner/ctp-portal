@@ -42,6 +42,7 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 /* mobile shell */
 .topbar{display:none}
 .mobnav{display:none}
+.mobnav{display:none}
 @media(max-width:760px){
   .shell{flex-direction:column}
   .side{display:none}
@@ -74,6 +75,8 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .chip{display:inline-block;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--dim);background:var(--bg)}
 .chip.live,.chip.active,.chip.published{color:#0b7d5c;border-color:#bfe9da;background:#effaf5}
 .chip.in_progress{color:#0048d6;border-color:#c8d9ff;background:#f0f5ff}
+.chip.proposal_out{color:#6d28d9;border-color:#ddd6fe;background:#f5f3ff}
+.chip.contract_signed{color:#047857;border-color:#a7f3d0;background:#ecfdf5}
 .chip.proposal_out{color:#6d28d9;border-color:#ddd6fe;background:#f5f3ff}
 .chip.contract_signed{color:#047857;border-color:#a7f3d0;background:#ecfdf5}
 .chip.draft,.chip.planned,.chip.paused{color:#8a6d1a;border-color:#ecdfb0;background:#fdf8e7}
@@ -130,3 +133,14 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .lang-toggle{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .lang-toggle button{background:var(--panel);border:none;padding:6px 13px;font-size:.78rem;font-weight:600;color:var(--dim);cursor:pointer}
 .lang-toggle button.on{background:var(--blue-soft);color:var(--blue)}
+
+/* ===== Client card grid ===== */
+.client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.client-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;text-align:left;cursor:pointer;border-left:3px solid transparent;border-image:var(--grad) 1;transition:transform .15s,box-shadow .15s;display:flex;flex-direction:column;justify-content:space-between;min-height:130px;font-family:inherit;color:var(--ink);box-shadow:0 1px 3px rgba(16,24,38,.04)}
+.client-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,24,38,.08)}
+.client-card h3{font-size:1rem;font-weight:600;margin:0 0 4px 0}
+.client-card-type{color:var(--dim);font-size:.84rem}
+.client-card-status{margin-top:14px}
+
+/* ===== Sub-nav (sidebar indented items) ===== */
+.sub-nv{padding-left:28px!important;font-size:.84rem!important;color:var(--dim);text-decoration:none}
