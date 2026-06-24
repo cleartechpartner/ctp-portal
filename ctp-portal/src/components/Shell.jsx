@@ -1,14 +1,17 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useLang } from '../lib/i18n';
 import { LOGO } from '../lib/logo';
 
 export default function Shell({ profile, internal, children }) {
   const { t } = useLang();
+  const location = useLocation();
+  const onStudio = location.pathname.startsWith('/studio');
+
   const nav = internal
     ? [
-        { to: '/', label: 'Clients', end: true },
-        { to: '/studio', label: 'Content Studio' }
+        { to: '/', label: 'Client Overview', end: true },
+        { to: '/studio', label: 'Content Studio', end: true }
       ]
     : [
         { to: '/', label: t('navHome'), end: true },
@@ -18,12 +21,6 @@ export default function Shell({ profile, internal, children }) {
         { to: '/profile', label: t('navProfile') }
       ];
 
-  const links = nav.map(n => (
-    <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nv' + (isActive ? ' on' : '')}>
-      {n.label}
-    </NavLink>
-  ));
-
   return (
     <div className="shell">
       <aside className="side">
@@ -31,7 +28,19 @@ export default function Shell({ profile, internal, children }) {
           <img src={LOGO} alt="" />
           <div className="wm">Clear Tech<br/>Partner<small>{internal ? 'Internal' : t('portalName')}</small></div>
         </div>
-        <nav>{links}</nav>
+        <nav>
+          {nav.map(n => (
+            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nv' + (isActive ? ' on' : '')}>
+              {n.label}
+            </NavLink>
+          ))}
+          {internal && onStudio && (
+            <>
+              <a href="/studio#library" className={'nv sub-nv' + (location.hash === '#library' ? ' on' : '')}>Library</a>
+              <a href="/studio#settings" className={'nv sub-nv' + (location.hash === '#settings' ? ' on' : '')}>Settings</a>
+            </>
+          )}
+        </nav>
         <div className="foot">
           <div className="who">{profile.full_name || profile.email}</div>
           <button className="btn sm gh" onClick={() => supabase.auth.signOut()}>{t('signOut')}</button>
@@ -42,7 +51,13 @@ export default function Shell({ profile, internal, children }) {
           <div className="logo-row"><img src={LOGO} alt="" /><span className="wm">Clear Tech Partner</span></div>
           <button className="btn sm gh" onClick={() => supabase.auth.signOut()}>{t('signOut')}</button>
         </div>
-        <div className="mobnav">{links}</div>
+        <div className="mobnav">
+          {nav.map(n => (
+            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nv' + (isActive ? ' on' : '')}>
+              {n.label}
+            </NavLink>
+          ))}
+        </div>
         {children}
       </div>
     </div>
