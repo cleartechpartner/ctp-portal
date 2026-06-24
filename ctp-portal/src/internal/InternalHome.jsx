@@ -40,9 +40,8 @@ export default function InternalHome() {
     <div className="page">
       <div className="page-h spread">
         <div>
-          <span className="eyebrow">Clear Tech Partner — Internal</span>
-          <h1>Clients</h1>
-          <p>Every active engagement, its portal, and its history.</p>
+          <h1>Client Overview</h1>
+          <p className="sub">Every active engagement, its portal, and its history.</p>
         </div>
         <button className="btn" onClick={() => setCreating(c => !c)}>{creating ? 'Close' : 'New client'}</button>
       </div>
@@ -78,29 +77,21 @@ export default function InternalHome() {
         <div className="card"><div className="empty">No clients yet. Create the first one — Ses Bruixes is waiting.</div></div>
       )}
 
-      <div className="grid3">
+      <div className="client-grid">
         {clients.map(c => (
-          <button key={c.id} className="card spine" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => nav(`/clients/${c.id}`)}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                <h3 style={{ margin: 0 }}>{c.name}</h3>
-                <span className={`chip ${c.language}`} style={{ flexShrink: 0 }}>{c.language.toUpperCase()}</span>
-              </div>
-              <div className="sub" style={{ marginTop: 4 }}>{c.property_type || '—'}</div>
-            </div>
-            <div style={{ marginTop: 14 }}>
-              <div style={{ marginBottom: 4 }}>
-                <span className={`chip ${c.status}`}>{STATUS_LABELS[c.status] || c.status}</span>
-              </div>
-              <div className="sub">{c.contact_name || '—'}</div>
+          <button key={c.id} className="client-card" onClick={() => nav(`/clients/${c.id}`)}>
+            <h3>{c.name}</h3>
+            <div className="client-card-type">{c.property_type || '—'}</div>
+            <div className="client-card-status">
+              <span className={`chip ${c.status}`}>{STATUS_LABELS[c.status] || c.status}</span>
             </div>
           </button>
         ))}
       </div>
 
       <div className="mt3">
-        <span className="eyebrow">Recent activity</span>
-        <div className="card mt">
+        <h3 style={{ fontSize: '.86rem', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--dim)', marginBottom: 12 }}>Recent activity</h3>
+        <div className="card">
           {activity.length === 0 && <div className="empty">Activity will appear here — publishes, uploads, invites.</div>}
           {activity.map(a => (
             <div key={a.id} className="item">
