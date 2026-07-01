@@ -20,6 +20,10 @@ const PROJECT_STATUS_PILLS = {
   complete:    { cls: 'wp-complete' },
 };
 
+// Child tables that reference clients.id — deleted explicitly before the
+// client row so this works regardless of whether DB-level cascade exists.
+const CHILD_TABLES = ['projects', 'reports', 'updates', 'documents'];
+
 function daysSince(dateStr) {
   if (!dateStr) return 0;
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
@@ -41,6 +45,12 @@ export default function InternalHome() {
   const [view, setView] = useState(() => {
     try { return localStorage.getItem('ctp-client-view') || 'grid'; } catch { return 'grid'; }
   });
+
+  // Delete flow state
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteErr, setDeleteErr] = useState('');
 
   const switchView = (v) => {
     setView(v);
@@ -68,6 +78,42 @@ export default function InternalHome() {
   };
 
   const F = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const openDelete = (e, client) => {
+    e.stopPropagation();
+    setDeleteErr('');
+    setConfirmText('');
+    setDeleteTarget(client);
+  };
+
+  const closeDelete = () => {
+    if (deleting) return;
+    setDeleteTarget(null);
+    setConfirmText('');
+    setDeleteErr('');
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteErr('');
+    try {
+      for (const table of CHILD_TABLES) {
+        const { error } = await supabase.from(table).delete().eq('client_id', deleteTarget.id);
+        if (error) throw new Error(`${table}: ${error.message}`);
+      }
+      const { error: clientErr } = await supabase.from('clients').delete().eq('id', deleteTarget.id);
+      if (clientErr) throw new Error(clientErr.message);
+
+      setClients(cs => cs.filter(c => c.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      setConfirmText('');
+    } catch (ex) {
+      setDeleteErr(ex.message || 'Delete failed.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (!clients) return <div className="center"><div className="sp" /></div>;
 
@@ -146,40 +192,58 @@ export default function InternalHome() {
             const activeProjects = projects.filter(p => p.status === 'live' || p.status === 'in_progress');
             const days = daysSince(c.created_at);
             return (
-              <button key={c.id} className={`co-card ${sc.cls}`} onClick={() => nav(`/clients/${c.id}`)}>
-                <div className="co-card-top">
-                  <div>
-                    <div className="co-card-name">{c.name}</div>
-                    <div className="co-card-type">{c.property_type || '—'}</div>
+              <div key={c.id} className={`co-card ${sc.cls}`} style={{ position: 'relative' }}>
+                <button
+                  className="co-delete-btn"
+                  onClick={(e) => openDelete(e, c)}
+                  title="Delete client"
+                  aria-label="Delete client"
+                  style={{
+                    position: 'absolute', top: 10, right: 10, zIndex: 2,
+                    width: 26, height: 26, borderRadius: 6, border: 'none',
+                    background: 'rgba(0,0,0,0.06)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 4h12M6 4V2.5A1 1 0 0 1 7 1.5h2a1 1 0 0 1 1 1V4M6.5 7.5v4M9.5 7.5v4M3.5 4l.6 8.4a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4L12.5 4" stroke="#B33A3A" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button className="co-card-click" onClick={() => nav(`/clients/${c.id}`)} style={{ all: 'unset', display: 'block', width: '100%', cursor: 'pointer' }}>
+                  <div className="co-card-top">
+                    <div>
+                      <div className="co-card-name">{c.name}</div>
+                      <div className="co-card-type">{c.property_type || '—'}</div>
+                    </div>
+                    <span className={`co-pill ${sc.cls}`}>{sc.label}</span>
                   </div>
-                  <span className={`co-pill ${sc.cls}`}>{sc.label}</span>
-                </div>
-                {projects.length > 0 && (
-                  <div className="co-tags">
-                    {[...new Set(projects.map(p => p.type))].map(t => (
-                      <span key={t} className="co-tag">{t}</span>
-                    ))}
+                  {projects.length > 0 && (
+                    <div className="co-tags">
+                      {[...new Set(projects.map(p => p.type))].map(t => (
+                        <span key={t} className="co-tag">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="co-kpis">
+                    <div className="co-kpi">
+                      <div className="co-kpi-label">Projects</div>
+                      <div className="co-kpi-value">{projects.length}</div>
+                    </div>
+                    <div className="co-kpi">
+                      <div className="co-kpi-label">Active</div>
+                      <div className="co-kpi-value">{activeProjects.length}</div>
+                    </div>
+                    <div className="co-kpi">
+                      <div className="co-kpi-label">Days</div>
+                      <div className="co-kpi-value">{days}</div>
+                    </div>
                   </div>
-                )}
-                <div className="co-kpis">
-                  <div className="co-kpi">
-                    <div className="co-kpi-label">Projects</div>
-                    <div className="co-kpi-value">{projects.length}</div>
+                  <div className="co-card-foot">
+                    <div className="co-avatar">RP</div>
+                    <span className="co-updated">Updated {fmtDate(c.created_at)}</span>
                   </div>
-                  <div className="co-kpi">
-                    <div className="co-kpi-label">Active</div>
-                    <div className="co-kpi-value">{activeProjects.length}</div>
-                  </div>
-                  <div className="co-kpi">
-                    <div className="co-kpi-label">Days</div>
-                    <div className="co-kpi-value">{days}</div>
-                  </div>
-                </div>
-                <div className="co-card-foot">
-                  <div className="co-avatar">RP</div>
-                  <span className="co-updated">Updated {fmtDate(c.created_at)}</span>
-                </div>
-              </button>
+                </button>
+              </div>
             );
           })}
         </div>
@@ -193,34 +257,51 @@ export default function InternalHome() {
             <div className="co-th co-th-status">Status</div>
             <div className="co-th co-th-work">Active work</div>
             <div className="co-th co-th-team">Team</div>
+            <div className="co-th co-th-actions"></div>
           </div>
           {clients.map(c => {
             const sc = STATUS_CFG[c.status] || STATUS_CFG.active;
             const projects = c.projects || [];
             const visibleProjects = projects.filter(p => p.status !== 'complete').slice(0, 3);
             return (
-              <button key={c.id} className="co-table-row" onClick={() => nav(`/clients/${c.id}`)}>
-                <div className="co-row-client">
-                  <span className="co-dot" style={{ background: sc.dot }} title={sc.label} />
-                  <div>
-                    <div className="co-row-name">{c.name}</div>
-                    <div className="co-row-meta">{c.property_type || '—'}</div>
+              <div key={c.id} className="co-table-row-wrap" style={{ position: 'relative', display: 'flex', alignItems: 'stretch' }}>
+                <button className="co-table-row" onClick={() => nav(`/clients/${c.id}`)} style={{ flex: 1 }}>
+                  <div className="co-row-client">
+                    <span className="co-dot" style={{ background: sc.dot }} title={sc.label} />
+                    <div>
+                      <div className="co-row-name">{c.name}</div>
+                      <div className="co-row-meta">{c.property_type || '—'}</div>
+                    </div>
                   </div>
-                </div>
-                <div className="co-row-status">
-                  <span className={`co-pill ${sc.cls}`}>{sc.label}</span>
-                </div>
-                <div className="co-row-work">
-                  {visibleProjects.length === 0 && <span className="co-row-meta">—</span>}
-                  {visibleProjects.map(p => {
-                    const ps = PROJECT_STATUS_PILLS[p.status] || PROJECT_STATUS_PILLS.planned;
-                    return <span key={p.id} className={`co-wp ${ps.cls}`}>{p.title} · {p.status.replace('_', ' ')}</span>;
-                  })}
-                </div>
-                <div className="co-row-team">
-                  <div className="co-avatar">RP</div>
-                </div>
-              </button>
+                  <div className="co-row-status">
+                    <span className={`co-pill ${sc.cls}`}>{sc.label}</span>
+                  </div>
+                  <div className="co-row-work">
+                    {visibleProjects.length === 0 && <span className="co-row-meta">—</span>}
+                    {visibleProjects.map(p => {
+                      const ps = PROJECT_STATUS_PILLS[p.status] || PROJECT_STATUS_PILLS.planned;
+                      return <span key={p.id} className={`co-wp ${ps.cls}`}>{p.title} · {p.status.replace('_', ' ')}</span>;
+                    })}
+                  </div>
+                  <div className="co-row-team">
+                    <div className="co-avatar">RP</div>
+                  </div>
+                </button>
+                <button
+                  className="co-delete-btn"
+                  onClick={(e) => openDelete(e, c)}
+                  title="Delete client"
+                  aria-label="Delete client"
+                  style={{
+                    width: 40, border: 'none', background: 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 4h12M6 4V2.5A1 1 0 0 1 7 1.5h2a1 1 0 0 1 1 1V4M6.5 7.5v4M9.5 7.5v4M3.5 4l.6 8.4a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4L12.5 4" stroke="#B33A3A" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
             );
           })}
         </div>
@@ -242,6 +323,52 @@ export default function InternalHome() {
           ))}
         </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+          }}
+          onClick={closeDelete}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 420, width: '90%', background: '#fff' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Delete {deleteTarget.name}?</h3>
+            <p className="sub" style={{ marginTop: 8 }}>
+              This permanently removes the client and all associated projects, reports, updates, and documents. This cannot be undone.
+            </p>
+            <div className="fld" style={{ marginTop: 16 }}>
+              <label className="lab">Type the client name to confirm</label>
+              <input
+                className="ti"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder={deleteTarget.name}
+                autoFocus
+              />
+            </div>
+            {deleteErr && <div className="auth-err" style={{ marginTop: 10 }}>{deleteErr}</div>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button className="btn" style={{ background: '#eee', color: '#333' }} onClick={closeDelete} disabled={deleting}>
+                Cancel
+              </button>
+              <button
+                className="btn"
+                style={{ background: '#B33A3A' }}
+                onClick={confirmDelete}
+                disabled={deleting || confirmText.trim() !== deleteTarget.name.trim()}
+              >
+                {deleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
