@@ -8,6 +8,7 @@ import Shell from './components/Shell';
 import InternalHome from './internal/InternalHome';
 import ClientDetail from './internal/ClientDetail';
 import Studio from './internal/Studio';
+import Settings from './internal/Settings';
 import ClientHome from './client/ClientHome';
 import Reports from './client/Reports';
 import Updates from './client/Updates';
@@ -66,6 +67,7 @@ export default function App() {
               <Route path="/" element={<InternalHome />} />
               <Route path="/clients/:id" element={<ClientDetail profile={profile} />} />
               <Route path="/studio" element={<Studio />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Shell>
