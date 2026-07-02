@@ -1,13 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { translate, notify, inviteClient, signedUrl, fmtBytes, monthLabel } from '../lib/api';
 
 const PROJECT_TYPES = ['AI guest agents', 'Systems and integrations', 'Consulting and operations', 'Other'];
 const PROJECT_STATUS = ['planned', 'in_progress', 'live', 'paused', 'complete'];
-const UPDATE_CATS = [['kb', 'Knowledge base'], ['prompt', 'Agent tuning'], ['feature', 'New feature'], ['fix', 'Fix'], ['learning', 'Learning'], ['update', 'Update']];
+const UPDATE_CATS = [['kb', 'Knowledge base'], ['prompt', 'Agent tuning'], ['feature', 'New feature'], ['fix', 'Fix'], ['learning', 'Learning'], ['update', 'Update'], ['other', 'Other']];
 const DOC_CATS = [['contract', 'Contract'], ['dpa', 'Data processing agreement'], ['onboarding', 'Onboarding'], ['general', 'General']];
 const STATUS_LABELS = { proposal_out: 'Proposal out', contract_signed: 'Contract signed', active: 'Active', paused: 'Paused', archived: 'Archived' };
+
+const CAT_COLORS = {
+  kb:      { bg: '#E8F4FD', text: '#0C2D6B', border: '#B8DDFB' },
+  prompt:  { bg: '#E6FAF6', text: '#0E6E5C', border: '#A8E8D8' },
+  feature: { bg: '#EDE9FE', text: '#5B21B6', border: '#C4B5FD' },
+  fix:     { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D' },
+  update:  { bg: '#F1F5F9', text: '#334155', border: '#CBD5E1' },
+  learning:{ bg: '#E0E7FF', text: '#3730A3', border: '#C7D2FE' },
+  other:   { bg: '#F5F3FF', text: '#4C1D95', border: '#DDD6FE' },
+};
+const DEFAULT_COLOR = { bg: '#F1F5F9', text: '#334155', border: '#CBD5E1' };
+function catColor(category) { return CAT_COLORS[category] || DEFAULT_COLOR; }
 
 const IconPlus = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
 const IconX = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
@@ -63,7 +75,7 @@ export default function ClientDetail({ profile }) {
   );
 }
 
-/* ---------- Overview: read-only by default, edit on demand ---------- */
+/* ---------- Overview ---------- */
 function Overview({ client, onSaved, toast }) {
   const [form, setForm] = useState(client);
   const [editing, setEditing] = useState(false);
@@ -218,7 +230,7 @@ function CdRow({ label, value }) {
   );
 }
 
-/* ---------- Reports: compose EN, translate, attach file, publish bilingual ---------- */
+/* ---------- Reports ---------- */
 function ReportsTab({ client, toast }) {
   const [reports, setReports] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -408,18 +420,33 @@ function ReportEditor({ r: initial, busy, onCancel, onSave, onTranslate, onPubli
   );
 }
 
-/* ---------- Updates: quick log entries, auto-translated for ES clients ---------- */
+/* ---------- Updates: quick log entries with colored pills + filters ---------- */
 function UpdatesTab({ client, toast }) {
   const [items, setItems] = useState([]);
   const [body, setBody] = useState('');
   const [cat, setCat] = useState('update');
   const [busy, setBusy] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
 
   const load = async () => {
     const { data } = await supabase.from('updates').select('*').eq('client_id', client.id).order('date', { ascending: false }).order('created_at', { ascending: false });
     setItems(data || []);
   };
   useEffect(() => { load(); }, [client.id]);
+
+  const categories = useMemo(() => {
+    const seen = new Map();
+    items.forEach(u => {
+      if (!seen.has(u.category)) seen.set(u.category, 0);
+      seen.set(u.category, seen.get(u.category) + 1);
+    });
+    return Array.from(seen.entries()).map(([c, count]) => ({ c, count }));
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    if (activeFilter === 'all') return items;
+    return items.filter(u => u.category === activeFilter);
+  }, [items, activeFilter]);
 
   const add = async (e) => {
     e.preventDefault();
@@ -439,6 +466,8 @@ function UpdatesTab({ client, toast }) {
     await supabase.from('updates').delete().eq('id', u.id); load();
   };
 
+  const catLabel = (key) => (UPDATE_CATS.find(c => c[0] === key) || [])[1] || key;
+
   return (
     <div className="card">
       <h3>Updates log</h3>
@@ -452,27 +481,68 @@ function UpdatesTab({ client, toast }) {
         <div className="fld mt"><textarea className="ta" style={{ minHeight: 70 }} value={body} onChange={e => setBody(e.target.value)} placeholder="Added Catalan greetings to Guida's late-night flow." required /></div>
         <button className="btn sm" disabled={busy || !body.trim()}>{busy ? 'Logging…' : 'Log update'}</button>
       </form>
+
+      {items.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '20px', marginBottom: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => setActiveFilter('all')}
+            style={{
+              padding: '5px 13px', borderRadius: '20px',
+              border: activeFilter === 'all' ? '2px solid #0C2D6B' : '1px solid #CBD5E1',
+              background: activeFilter === 'all' ? '#0C2D6B' : '#fff',
+              color: activeFilter === 'all' ? '#fff' : '#334155',
+              fontSize: '.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all .15s ease',
+            }}
+          >All ({items.length})</button>
+          {categories.map(({ c: k, count }) => {
+            const co = catColor(k);
+            const isActive = activeFilter === k;
+            return (
+              <button key={k}
+                onClick={() => setActiveFilter(isActive ? 'all' : k)}
+                style={{
+                  padding: '5px 13px', borderRadius: '20px',
+                  border: isActive ? `2px solid ${co.text}` : `1px solid ${co.border}`,
+                  background: isActive ? co.text : co.bg,
+                  color: isActive ? '#fff' : co.text,
+                  fontSize: '.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all .15s ease',
+                }}
+              >{catLabel(k)} ({count})</button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="mt2">
-        {items.length === 0 && <div className="empty">Nothing logged yet.</div>}
-        {items.map(u => (
-          <div key={u.id} className="item">
-            <div style={{ flex: 1 }}>
-              <div className="row"><span className="chip">{(UPDATE_CATS.find(c => c[0] === u.category) || [])[1] || u.category}</span>
-                <span className="meta">{new Date(u.date).toLocaleDateString(client.language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
-              <div className="mt" style={{ fontSize: '.92rem' }}>{u.body_en}</div>
-              {u.body_es && <div className="meta mt">ES: {u.body_es}</div>}
+        {filtered.length === 0 && <div className="empty">Nothing logged yet.</div>}
+        {filtered.map(u => {
+          const co = catColor(u.category);
+          return (
+            <div key={u.id} className="item">
+              <div style={{ flex: 1 }}>
+                <div className="row">
+                  <span style={{
+                    display: 'inline-block', padding: '3px 10px', borderRadius: '12px',
+                    fontSize: '.73rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase',
+                    background: co.bg, color: co.text, border: `1px solid ${co.border}`,
+                  }}>{catLabel(u.category)}</span>
+                  <span className="meta">{new Date(u.date).toLocaleDateString(client.language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
+                <div className="mt" style={{ fontSize: '.92rem' }}>{u.body_en}</div>
+                {u.body_es && <div className="meta mt">ES: {u.body_es}</div>}
+              </div>
+              <button className="icon-btn icon-btn-danger" onClick={() => remove(u)} title="Delete update" aria-label="Delete update">
+                <IconX />
+              </button>
             </div>
-            <button className="icon-btn icon-btn-danger" onClick={() => remove(u)} title="Delete update" aria-label="Delete update">
-              <IconX />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-/* ---------- Documents: upload to client folder, optional notify, filter ---------- */
+/* ---------- Documents ---------- */
 function DocumentsTab({ client, toast }) {
   const [docs, setDocs] = useState([]);
   const [cat, setCat] = useState('general');
@@ -517,11 +587,9 @@ function DocumentsTab({ client, toast }) {
     load();
   };
 
-  // Build filter options from actual categories present (so legacy 'invoice' docs still show as filter if any exist)
   const presentCategories = [...new Set(docs.map(d => d.category))];
   const filterOptions = [['all', 'All']];
   DOC_CATS.forEach(([v, l]) => { if (presentCategories.includes(v) || true) filterOptions.push([v, l]); });
-  // Add legacy categories present in data but not in DOC_CATS (e.g. invoice)
   presentCategories.forEach(c => {
     if (!filterOptions.find(([v]) => v === c)) {
       filterOptions.push([c, c.charAt(0).toUpperCase() + c.slice(1)]);
@@ -583,7 +651,7 @@ function DocumentsTab({ client, toast }) {
   );
 }
 
-/* ---------- Access: invite client users ---------- */
+/* ---------- Access ---------- */
 function AccessTab({ client, toast }) {
   const [users, setUsers] = useState([]);
   const [email, setEmail] = useState(client.contact_email || '');
