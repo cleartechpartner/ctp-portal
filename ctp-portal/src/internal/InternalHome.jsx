@@ -20,9 +20,8 @@ const PROJECT_STATUS_PILLS = {
   complete:    { cls: 'wp-complete' },
 };
 
-// Child tables that reference clients.id — deleted explicitly before the
-// client row so this works regardless of whether DB-level cascade exists.
 const CHILD_TABLES = ['projects', 'reports', 'updates', 'documents'];
+const ACTIVITY_PREVIEW_COUNT = 5;
 
 function daysSince(dateStr) {
   if (!dateStr) return 0;
@@ -34,10 +33,26 @@ function fmtDate(dateStr, lang = 'en') {
   return new Date(dateStr).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' });
 }
 
+function initialsOf(name) {
+  if (!name) return 'RP';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || 'RP';
+}
+
+function Avatar({ profile, size = 28 }) {
+  const style = { width: size, height: size, borderRadius: '50%', objectFit: 'cover', display: 'block' };
+  if (profile?.avatar_url) {
+    return <img src={profile.avatar_url} alt={profile.full_name || 'Avatar'} style={style} />;
+  }
+  return <div className="co-avatar">{initialsOf(profile?.full_name)}</div>;
+}
+
 export default function InternalHome() {
   const nav = useNavigate();
   const [clients, setClients] = useState(null);
   const [activity, setActivity] = useState([]);
+  const [activityExpanded, setActivityExpanded] = useState(false);
+  const [myProfile, setMyProfile] = useState(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', property_type: PROPERTY_TYPES[0], contact_name: '', contact_email: '', language: 'en', partner_notes: '' });
   const [busy, setBusy] = useState(false);
@@ -46,8 +61,7 @@ export default function InternalHome() {
     try { return localStorage.getItem('ctp-client-view') || 'grid'; } catch { return 'grid'; }
   });
 
-  // Delete flow state
-  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteErr, setDeleteErr] = useState('');
@@ -63,8 +77,16 @@ export default function InternalHome() {
       .select('*, projects(id, title, type, status)')
       .order('created_at', { ascending: false });
     setClients(cs || []);
-    const { data: act } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(6);
+
+    const { data: act } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(50);
     setActivity(act || []);
+
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData?.user?.id;
+    if (uid) {
+      const { data: prof } = await supabase.from('profiles').select('*').eq('id', uid).single();
+      if (prof) setMyProfile(prof);
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -107,7 +129,6 @@ export default function InternalHome() {
 
       setClients(cs => cs.filter(c => c.id !== deleteTarget.id));
       setDeleteTarget(null);
-      setConfirmText('');
     } catch (ex) {
       setDeleteErr(ex.message || 'Delete failed.');
     } finally {
@@ -115,7 +136,16 @@ export default function InternalHome() {
     }
   };
 
+  const deleteActivity = async (id) => {
+    const prev = activity;
+    setActivity(a => a.filter(x => x.id !== id)); // optimistic
+    const { error } = await supabase.from('activity_log').delete().eq('id', id);
+    if (error) setActivity(prev); // revert on failure
+  };
+
   if (!clients) return <div className="center"><div className="sp" /></div>;
+
+  const visibleActivity = activityExpanded ? activity : activity.slice(0, ACTIVITY_PREVIEW_COUNT);
 
   return (
     <div className="page">
@@ -144,6 +174,15 @@ export default function InternalHome() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="1" y="6.75" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="1" y="11.5" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/></svg>
             </button>
           </div>
+          <button
+            className="co-toggle-btn"
+            onClick={() => nav('/settings')}
+            title="Settings"
+            aria-label="Settings"
+            style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', padding: 0 }}
+          >
+            <Avatar profile={myProfile} size={34} />
+          </button>
           <button className="btn" onClick={() => setCreating(c => !c)}>
             {creating ? 'Close' : '+ New client'}
           </button>
@@ -239,7 +278,7 @@ export default function InternalHome() {
                     </div>
                   </div>
                   <div className="co-card-foot">
-                    <div className="co-avatar">RP</div>
+                    <Avatar profile={myProfile} />
                     <span className="co-updated">Updated {fmtDate(c.created_at)}</span>
                   </div>
                 </button>
@@ -284,7 +323,7 @@ export default function InternalHome() {
                     })}
                   </div>
                   <div className="co-row-team">
-                    <div className="co-avatar">RP</div>
+                    <Avatar profile={myProfile} />
                   </div>
                 </button>
                 <button
@@ -312,15 +351,40 @@ export default function InternalHome() {
         <div className="co-section-label">Recent activity</div>
         <div className="card">
           {activity.length === 0 && <div className="empty">Activity will appear here — publishes, uploads, invites.</div>}
-          {activity.map(a => (
-            <div key={a.id} className="item">
-              <div>
+          {visibleActivity.map(a => (
+            <div key={a.id} className="item" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1 }}>
                 <div className="nm">{a.action.replace(/_/g, ' ')}</div>
                 <div className="meta">{a.details || ''}</div>
               </div>
-              <div className="meta">{new Date(a.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+              <div className="meta" style={{ whiteSpace: 'nowrap' }}>
+                {new Date(a.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </div>
+              <button
+                onClick={() => deleteActivity(a.id)}
+                title="Dismiss"
+                aria-label="Dismiss activity"
+                style={{
+                  width: 22, height: 22, border: 'none', background: 'transparent',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#9ca3af', flexShrink: 0
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+              </button>
             </div>
           ))}
+          {activity.length > ACTIVITY_PREVIEW_COUNT && (
+            <button
+              className="link-btn"
+              onClick={() => setActivityExpanded(v => !v)}
+              style={{ marginTop: 10 }}
+            >
+              {activityExpanded ? 'Show less' : `Show all (${activity.length})`}
+            </button>
+          )}
         </div>
       </div>
 
