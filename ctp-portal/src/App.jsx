@@ -14,6 +14,10 @@ import Reports from './client/Reports';
 import Updates from './client/Updates';
 import Documents from './client/Documents';
 import Profile from './client/Profile';
+import Sign from './internal/Sign';
+import SignPrepare from './internal/SignPrepare';
+import SignDetail from './internal/SignDetail';
+import SignerView from './sign/SignerView';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading
@@ -43,6 +47,19 @@ export default function App() {
       });
   }, [session?.user?.id]);
 
+  // Public signer route: tokenised link from the signature email. Registered
+  // outside the auth gate on purpose — no session, no Shell, no login.
+  if (window.location.pathname.startsWith('/esign/')) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/esign/:token" element={<SignerView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   if (session === undefined || (session && !profile)) {
     return <div className="center"><div className="sp" /></div>;
   }
@@ -67,6 +84,9 @@ export default function App() {
               <Route path="/" element={<InternalHome />} />
               <Route path="/clients/:id" element={<ClientDetail profile={profile} />} />
               <Route path="/studio" element={<Studio />} />
+              <Route path="/sign" element={<Sign />} />
+              <Route path="/sign/new" element={<SignPrepare />} />
+              <Route path="/sign/:id" element={<SignDetail />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
