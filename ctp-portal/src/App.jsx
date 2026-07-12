@@ -15,10 +15,15 @@ import Reports from './client/Reports';
 import Updates from './client/Updates';
 import Documents from './client/Documents';
 import Profile from './client/Profile';
+import Sign from './internal/Sign';
+import SignPrepare from './internal/SignPrepare';
+import SignDetail from './internal/SignDetail';
+import SignerView from './sign/SignerView';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [profile, setProfile] = useState(null);
+  const [clientLinks, setClientLinks] = useState([]); // profile_clients rows with client names
   const [authError, setAuthError] = useState(null);
   const [pwRecovery, setPwRecovery] = useState(false);
 
@@ -36,13 +41,44 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) { setProfile(null); return; }
-    supabase.from('profiles').select('*').eq('id', session.user.id).single()
-      .then(({ data, error }) => {
-        if (error) { console.error('Profile fetch error:', error); setAuthError('Could not load profile: ' + error.message); setSession(null); }
-        else setProfile(data || null);
-      });
+    if (!session) { setProfile(null); setClientLinks([]); return; }
+    (async () => {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+      if (error) {
+        console.error('Profile fetch error:', error);
+        setAuthError('Could not load profile: ' + error.message);
+        setSession(null);
+        return;
+      }
+      // Which clients this profile can access (multi-client switcher).
+      // Fails soft: before the multi-client migration runs, the table does
+      // not exist and single-client behaviour continues unchanged.
+      if (data?.role === 'client') {
+        const { data: links, error: linkErr } = await supabase
+          .from('profile_clients')
+          .select('client_id, clients(id, name)')
+          .eq('profile_id', session.user.id);
+        if (linkErr) console.error('profile_clients fetch error:', linkErr);
+        setClientLinks(linkErr ? [] : (links || []));
+      } else {
+        setClientLinks([]);
+      }
+      setProfile(data || null);
+    })();
   }, [session?.user?.id]);
+
+  // Public signer route: tokenised link from the signature email. Registered
+  // outside the auth gate on purpose — no session, no Shell, no login.
+  if (window.location.pathname.startsWith('/esign/')) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/esign/:token" element={<SignerView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
   if (session === undefined || (session && !profile)) {
     return <div className="center"><div className="sp" /></div>;
@@ -69,12 +105,15 @@ export default function App() {
               <Route path="/clients/:id" element={<ClientDetail profile={profile} />} />
               <Route path="/studio" element={<Studio />} />
               <Route path="/time" element={<Time />} />
+              <Route path="/sign" element={<Sign />} />
+              <Route path="/sign/new" element={<SignPrepare />} />
+              <Route path="/sign/:id" element={<SignDetail />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Shell>
         ) : (
-          <Shell profile={profile}>
+          <Shell profile={profile} clientLinks={clientLinks}>
             <Routes>
               <Route path="/" element={<ClientHome profile={profile} />} />
               <Route path="/reports" element={<Reports profile={profile} />} />
