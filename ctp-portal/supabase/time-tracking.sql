@@ -60,3 +60,12 @@ create policy "internal all time entries" on public.time_entries for all to auth
   using (public.is_internal()) with check (public.is_internal());
 create policy "internal all time timers" on public.time_timers for all to authenticated
   using (public.is_internal()) with check (public.is_internal());
+
+-- ---------- TABLE PRIVILEGES ----------
+-- This project does not auto-grant privileges on tables created after the
+-- base schema, so without explicit grants PostgREST fails with "permission
+-- denied for table ..." before RLS is even evaluated. Grants say what the
+-- role may attempt; the RLS policies above say which rows it reaches.
+
+grant select, insert, update, delete on public.time_entries to authenticated;
+grant select, insert, update, delete on public.time_timers to authenticated;

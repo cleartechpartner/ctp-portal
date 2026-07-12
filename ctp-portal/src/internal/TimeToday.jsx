@@ -35,7 +35,9 @@ export default function TimeToday({ projects }) {
         .gte('started_at', from.toISOString()).lt('started_at', to.toISOString())
         .order('started_at', { ascending: false })
     ]);
-    if (e1 || e2) { setErr((e1 || e2).message); return; }
+    // On error, still clear the loading state: an empty list plus the error
+    // banner beats an infinite spinner that hides the message.
+    if (e1 || e2) { setErr((e1 || e2).message); setEntries(es || []); return; }
     setTimer(tm || null);
     setEntries(es || []);
     if (tm) setForm({ project_id: tm.project_id, notes: tm.notes || '', billable: tm.billable });
