@@ -85,13 +85,13 @@ function signerEmail(env, signer, token) {
   var es = env.language === 'es';
   var subject = (es ? 'Firma solicitada | ' : 'Signature requested | ') + env.name;
   var intro = es
-    ? 'Hola ' + esc(signer.name) + ',<br/><br/>Clear Tech Partner te ha enviado <b>' + esc(env.name) + '</b> para revisarlo y firmarlo electrónicamente.'
+    ? 'Hola ' + esc(signer.name) + ',<br/><br/>Clear Tech Partner le ha enviado <b>' + esc(env.name) + '</b> para revisarlo y firmarlo electrónicamente.'
     : 'Hi ' + esc(signer.name) + ',<br/><br/>Clear Tech Partner has sent you <b>' + esc(env.name) + '</b> to review and sign electronically.';
   if (env.message) {
     intro += '<br/><br/><i>' + esc(env.message) + '</i>';
   }
   intro += '<br/><br/>' + (es
-    ? 'Este enlace es personal. No lo reenvíes a nadie.'
+    ? 'Este enlace es personal. No lo reenvíe a nadie.'
     : 'This link is personal to you. Please do not forward it.');
   return sendEmail(signer.email, subject, emailShell(subject, intro, es ? 'Revisar y firmar' : 'Review and sign', link));
 }

@@ -324,7 +324,7 @@ async function sendCompletionEmails(data, sealedBuf, certBuf) {
   for (var i = 0; i < data.signers.length; i++) {
     var s = data.signers[i];
     var intro = es
-      ? 'Hola ' + esc(s.name) + ',<br/><br/>Todas las partes han firmado <b>' + esc(env.name) + '</b>. Te adjuntamos el documento sellado y el certificado de finalización. Guarda ambos archivos.'
+      ? 'Hola ' + esc(s.name) + ',<br/><br/>Todas las partes han firmado <b>' + esc(env.name) + '</b>. Le adjuntamos el documento sellado y el certificado de finalización. Guarde ambos archivos.'
       : 'Hi ' + esc(s.name) + ',<br/><br/>All parties have signed <b>' + esc(env.name) + '</b>. The sealed document and the certificate of completion are attached. Keep both files for your records.';
     await sendEmail(s.email, subject, emailShell(subject, intro, null, null), attachments);
   }
@@ -383,7 +383,7 @@ exports.handler = async function(event) {
           var es = env.language === 'es';
           var subject = (es ? 'Firma solicitada | ' : 'Signature requested | ') + env.name;
           var intro = es
-            ? 'Hola ' + esc(fin.next_signer.name) + ',<br/><br/>Es tu turno de firmar <b>' + esc(env.name) + '</b>.<br/><br/>Este enlace es personal. No lo reenvíes a nadie.'
+            ? 'Hola ' + esc(fin.next_signer.name) + ',<br/><br/>Es su turno de firmar <b>' + esc(env.name) + '</b>.<br/><br/>Este enlace es personal. No lo reenvíe a nadie.'
             : 'Hi ' + esc(fin.next_signer.name) + ',<br/><br/>It is your turn to sign <b>' + esc(env.name) + '</b>.<br/><br/>This link is personal to you. Please do not forward it.';
           await sendEmail(fin.next_signer.email, subject,
             emailShell(subject, intro, es ? 'Revisar y firmar' : 'Review and sign', SITE + '/esign/' + fin.next_signer.token));

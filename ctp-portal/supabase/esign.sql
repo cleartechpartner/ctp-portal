@@ -688,16 +688,16 @@ By selecting "I agree and consent to sign electronically" you confirm that you h
 ('es', 1,
 'Consentimiento para registros y firmas electrónicos
 
-Se te ha pedido revisar y firmar este documento por vía electrónica. Antes de continuar, lee y acepta lo siguiente.
+Se le ha pedido revisar y firmar este documento por vía electrónica. Antes de continuar, lea y acepte lo siguiente.
 
-1. Firma electrónica. Al seleccionar "Acepto" consientes en firmar este documento por medios electrónicos. Tu firma electrónica será tan válida y exigible como una firma manuscrita, en la medida permitida por la legislación aplicable, incluido el Reglamento (UE) 910/2014 (eIDAS) y las leyes estadounidenses ESIGN y UETA.
+1. Firma electrónica. Al seleccionar "Acepto" consiente en firmar este documento por medios electrónicos. Su firma electrónica será tan válida y exigible como una firma manuscrita, en la medida permitida por la legislación aplicable, incluido el Reglamento (UE) 910/2014 (eIDAS) y las leyes estadounidenses ESIGN y UETA.
 
-2. Registros electrónicos. Aceptas recibir este documento, y cualquier aviso relacionado, en formato electrónico. Puedes solicitar una copia en papel al remitente en cualquier momento.
+2. Registros electrónicos. Acepta recibir este documento, y cualquier aviso relacionado, en formato electrónico. Puede solicitar una copia en papel al remitente en cualquier momento.
 
-3. Registro de auditoría. Para proteger a ambas partes, registramos la fecha y hora de cada acción que realizas sobre este documento, junto con tu dirección IP y los datos de tu navegador. Este registro forma parte de la evidencia del documento firmado.
+3. Registro de auditoría. Para proteger a ambas partes, registramos la fecha y hora de cada acción que realiza sobre este documento, junto con su dirección IP y los datos de su navegador. Este registro forma parte de la evidencia del documento firmado.
 
-4. Retirada del consentimiento. Puedes negarte a firmar electrónicamente eligiendo "Rechazar" en la pantalla de firma y contactando con el remitente para acordar una alternativa. Rechazar antes de terminar la firma no tiene ningún efecto legal sobre ti.
+4. Retirada del consentimiento. Puede negarse a firmar electrónicamente eligiendo "Rechazar" en la pantalla de firma y contactando con el remitente para acordar una alternativa. Rechazar antes de terminar la firma no tiene ningún efecto legal sobre usted.
 
-5. Requisitos. Necesitas un navegador web actualizado y una dirección de correo electrónico válida para firmar electrónicamente. Si no puedes acceder a este documento, contacta con el remitente.
+5. Requisitos. Necesita un navegador web actualizado y una dirección de correo electrónico válida para firmar electrónicamente. Si no puede acceder a este documento, contacte con el remitente.
 
-Al seleccionar "Acepto y consiento firmar electrónicamente" confirmas que has leído este aviso y que consientes el uso de registros y firmas electrónicos para este documento.');
+Al seleccionar "Acepto y consiento firmar electrónicamente" confirma que ha leído este aviso y que consiente el uso de registros y firmas electrónicos para este documento.');
