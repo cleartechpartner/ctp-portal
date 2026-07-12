@@ -18,6 +18,7 @@ import Profile from './client/Profile';
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [profile, setProfile] = useState(null);
+  const [clientLinks, setClientLinks] = useState([]); // profile_clients rows with client names
   const [authError, setAuthError] = useState(null);
   const [pwRecovery, setPwRecovery] = useState(false);
 
@@ -35,12 +36,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) { setProfile(null); return; }
-    supabase.from('profiles').select('*').eq('id', session.user.id).single()
-      .then(({ data, error }) => {
-        if (error) { console.error('Profile fetch error:', error); setAuthError('Could not load profile: ' + error.message); setSession(null); }
-        else setProfile(data || null);
-      });
+    if (!session) { setProfile(null); setClientLinks([]); return; }
+    (async () => {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+      if (error) {
+        console.error('Profile fetch error:', error);
+        setAuthError('Could not load profile: ' + error.message);
+        setSession(null);
+        return;
+      }
+      // Which clients this profile can access (multi-client switcher).
+      // Fails soft: before the multi-client migration runs, the table does
+      // not exist and single-client behaviour continues unchanged.
+      if (data?.role === 'client') {
+        const { data: links, error: linkErr } = await supabase
+          .from('profile_clients')
+          .select('client_id, clients(id, name)')
+          .eq('profile_id', session.user.id);
+        if (linkErr) console.error('profile_clients fetch error:', linkErr);
+        setClientLinks(linkErr ? [] : (links || []));
+      } else {
+        setClientLinks([]);
+      }
+      setProfile(data || null);
+    })();
   }, [session?.user?.id]);
 
   if (session === undefined || (session && !profile)) {
@@ -72,7 +91,7 @@ export default function App() {
             </Routes>
           </Shell>
         ) : (
-          <Shell profile={profile}>
+          <Shell profile={profile} clientLinks={clientLinks}>
             <Routes>
               <Route path="/" element={<ClientHome profile={profile} />} />
               <Route path="/reports" element={<Reports profile={profile} />} />
