@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-async function fx(path, body) {
+export async function fx(path, body) {
   const { data: { session } } = await supabase.auth.getSession();
   const r = await fetch(path, {
     method: 'POST',
