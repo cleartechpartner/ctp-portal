@@ -159,6 +159,21 @@ create policy "internal read disclosures" on public.envelope_disclosures for sel
 create policy "internal insert disclosures" on public.envelope_disclosures for insert to authenticated
   with check (public.is_internal());
 
+-- ---------- TABLE PRIVILEGES ----------
+-- This project does not auto-grant privileges on tables created after the
+-- base schema, so without explicit grants PostgREST fails with "permission
+-- denied for table ..." before RLS is even evaluated. Grants say what the
+-- role may attempt; the RLS policies above say which rows it reaches.
+-- anon gets nothing: signers only ever go through the security definer
+-- esign_* functions.
+
+grant select, insert, update, delete on public.envelopes to authenticated;
+grant select, insert, update, delete on public.envelope_signers to authenticated;
+grant select, insert, update, delete on public.envelope_fields to authenticated;
+grant select, insert on public.envelope_events to authenticated; -- append-only: no update/delete
+grant select, insert, update, delete on public.envelope_templates to authenticated;
+grant select, insert on public.envelope_disclosures to authenticated;
+
 -- ---------- STORAGE ----------
 -- Private bucket for source, sealed and certificate PDFs.
 -- Access is internal-only, always via signed expiring URLs.
