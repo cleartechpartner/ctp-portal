@@ -56,6 +56,27 @@ exports.handler = async function(event) {
     }
     var actionLink = linkData.action_link || (linkData.properties && linkData.properties.action_link);
 
+    // Multi-client access: generate_link creates the auth user immediately,
+    // which fires handle_new_user, so the profile exists here. Mirror the
+    // profile's client into profile_clients so the access list is complete
+    // from day one. Runs under the caller's JWT (internal RLS policy), not
+    // the service key. Non-fatal: the invite already succeeded.
+    var linked = false;
+    var newUserId = linkData.id || (linkData.user && linkData.user.id);
+    if (newUserId) {
+      var joinRes = await fetch(SUPABASE_URL + '/rest/v1/profile_clients', {
+        method: 'POST',
+        headers: {
+          apikey: ANON_KEY, Authorization: 'Bearer ' + caller.token,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=ignore-duplicates,return=minimal'
+        },
+        body: JSON.stringify({ profile_id: newUserId, client_id: client_id })
+      });
+      await joinRes.text();
+      linked = joinRes.ok;
+    }
+
     var emailed = false;
     if (RESEND_KEY && actionLink) {
       var es = lang === 'es';
@@ -98,7 +119,7 @@ exports.handler = async function(event) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ ok: true, emailed: emailed, action_link: emailed ? undefined : actionLink })
+      body: JSON.stringify({ ok: true, emailed: emailed, linked: linked, action_link: emailed ? undefined : actionLink })
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };

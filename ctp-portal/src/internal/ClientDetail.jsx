@@ -653,17 +653,79 @@ function DocumentsTab({ client, toast }) {
 
 /* ---------- Access ---------- */
 function AccessTab({ client, toast }) {
-  const [users, setUsers] = useState([]);
+  const [links, setLinks] = useState([]);        // profile_clients rows with profile details
+  const [allProfiles, setAllProfiles] = useState([]); // every client-role profile, for the add picker
+  const [migrated, setMigrated] = useState(true); // false until the multi-client migration has run
+  const [addId, setAddId] = useState('');
   const [email, setEmail] = useState(client.contact_email || '');
   const [name, setName] = useState(client.contact_name || '');
   const [busy, setBusy] = useState(false);
   const [manualLink, setManualLink] = useState('');
 
   const load = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('client_id', client.id);
-    setUsers(data || []);
+    const { data, error } = await supabase.from('profile_clients')
+      .select('profile_id, created_at, profiles(id, email, full_name, language, client_id)')
+      .eq('client_id', client.id);
+    if (error) {
+      // Table missing means the migration has not run yet; fall back to the
+      // legacy single-client view so this tab keeps working.
+      setMigrated(false);
+      const { data: legacy } = await supabase.from('profiles').select('*').eq('client_id', client.id);
+      setLinks((legacy || []).map(p => ({ profile_id: p.id, profiles: p })));
+      return;
+    }
+    setMigrated(true);
+    setLinks(data || []);
+    const { data: all } = await supabase.from('profiles')
+      .select('id, email, full_name').eq('role', 'client').order('email');
+    setAllProfiles(all || []);
   };
   useEffect(() => { load(); }, [client.id]);
+
+  const addLink = async () => {
+    if (!addId) return;
+    setBusy(true);
+    const { error } = await supabase.from('profile_clients')
+      .insert({ profile_id: addId, client_id: client.id });
+    if (error) toast('Could not add: ' + error.message);
+    else {
+      // If the profile has no selected client yet, select this one so their
+      // portal opens on something.
+      const prof = allProfiles.find(p => p.id === addId);
+      const { data: cur } = await supabase.from('profiles').select('client_id').eq('id', addId).single();
+      if (cur && !cur.client_id) {
+        await supabase.from('profiles').update({ client_id: client.id }).eq('id', addId);
+      }
+      toast(`${prof?.email || 'Profile'} linked`);
+      setAddId('');
+    }
+    await load();
+    setBusy(false);
+  };
+
+  const removeLink = async (link) => {
+    const p = link.profiles;
+    if (!window.confirm(`Remove ${p?.email || 'this profile'}'s access to ${client.name}?`)) return;
+    setBusy(true);
+    const { error } = await supabase.from('profile_clients')
+      .delete().eq('profile_id', link.profile_id).eq('client_id', client.id);
+    if (error) toast('Could not remove: ' + error.message);
+    else if (p?.client_id === client.id) {
+      // They were looking at this client. Point them at another linked
+      // client, or null if none remain.
+      const { data: rest } = await supabase.from('profile_clients')
+        .select('client_id').eq('profile_id', link.profile_id).limit(1);
+      const next = rest && rest[0] ? rest[0].client_id : null;
+      const { error: e2 } = await supabase.from('profiles')
+        .update({ client_id: next }).eq('id', link.profile_id);
+      if (e2) toast('Removed, but could not move their selection: ' + e2.message);
+      else toast('Access removed');
+    } else {
+      toast('Access removed');
+    }
+    await load();
+    setBusy(false);
+  };
 
   const invite = async (e) => {
     e.preventDefault();
@@ -692,15 +754,47 @@ function AccessTab({ client, toast }) {
         <div className="fld mt2"><label className="lab">One-time setup link (send it yourself)</label>
           <textarea className="ta" style={{ minHeight: 60, fontSize: '.78rem' }} readOnly value={manualLink} onClick={e => e.target.select()} /></div>
       )}
+
       <div className="mt2">
-        {users.map(u => (
-          <div key={u.id} className="item">
-            <div><div className="nm">{u.full_name || u.email}</div><div className="meta">{u.email}</div></div>
-            <span className={`chip ${u.language}`}>{u.language.toUpperCase()}</span>
-          </div>
-        ))}
-        {users.length === 0 && <div className="empty">No portal users yet.</div>}
+        <div className="lab">Who can see this client's portal</div>
+        {links.map(l => {
+          const u = l.profiles;
+          if (!u) return null;
+          return (
+            <div key={l.profile_id} className="item">
+              <div>
+                <div className="nm">
+                  {u.full_name || u.email}
+                  {u.client_id === client.id && <span className="chip" style={{ marginLeft: 8 }}>Viewing this client</span>}
+                </div>
+                <div className="meta">{u.email}</div>
+              </div>
+              <div className="row">
+                <span className={`chip ${u.language}`}>{(u.language || 'en').toUpperCase()}</span>
+                {migrated && (
+                  <button className="icon-btn icon-btn-danger" title="Remove access" disabled={busy}
+                    onClick={() => removeLink(l)}>×</button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {links.length === 0 && <div className="empty">No portal users yet.</div>}
       </div>
+
+      {migrated ? (
+        <div className="row mt2">
+          <select className="sel" style={{ maxWidth: 320 }} value={addId} onChange={e => setAddId(e.target.value)}>
+            <option value="">Link an existing portal user…</option>
+            {allProfiles
+              .filter(p => !links.some(l => l.profile_id === p.id))
+              .map(p => <option key={p.id} value={p.id}>{p.full_name ? `${p.full_name} (${p.email})` : p.email}</option>)}
+          </select>
+          <button className="btn sm gh" disabled={busy || !addId} onClick={addLink}>Add</button>
+        </div>
+      ) : (
+        <div className="sub mt2">Multi-client access is not active yet. Run supabase/multi-client.sql to enable linking one login to several clients.</div>
+      )}
     </div>
   );
 }

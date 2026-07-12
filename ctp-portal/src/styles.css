@@ -270,6 +270,14 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .report-attach-name{font-size:.92rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .report-attach-meta{font-size:.78rem;color:var(--dim);margin-top:2px}
 .report-attach-action{color:var(--blue);flex-shrink:0}
+/* ===== Multi-client switcher ===== */
+.client-switch{padding:12px 14px 2px}
+.client-switch-sel{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:8px 10px;font-family:inherit;font-size:.86rem;font-weight:600;cursor:pointer}
+.client-switch-sel:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,82,255,.14)}
+.client-switch-sel:disabled{opacity:.55;cursor:default}
+.client-switch-err{color:var(--danger);font-size:.72rem;margin-top:5px}
+.topbar .client-switch{padding:0}
+.topbar .client-switch-sel{width:auto;max-width:180px}
 
 /* ===== E-Signature ===== */
 .es-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px}
