@@ -48,7 +48,8 @@ export default function Shell({ profile, internal, clientLinks, children }) {
   const nav = internal
     ? [
         { to: '/', label: 'Client Overview', end: true },
-        { to: '/studio', label: 'Content Studio', end: true }
+        { to: '/studio', label: 'Content Studio', end: true },
+        { to: '/sign', label: 'E-Signature' }
       ]
     : [
         { to: '/', label: t('navHome'), end: true },
