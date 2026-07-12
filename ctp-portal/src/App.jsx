@@ -9,6 +9,7 @@ import InternalHome from './internal/InternalHome';
 import ClientDetail from './internal/ClientDetail';
 import Studio from './internal/Studio';
 import Settings from './internal/Settings';
+import Time from './internal/Time';
 import ClientHome from './client/ClientHome';
 import Reports from './client/Reports';
 import Updates from './client/Updates';
@@ -103,6 +104,7 @@ export default function App() {
               <Route path="/" element={<InternalHome />} />
               <Route path="/clients/:id" element={<ClientDetail profile={profile} />} />
               <Route path="/studio" element={<Studio />} />
+              <Route path="/time" element={<Time />} />
               <Route path="/sign" element={<Sign />} />
               <Route path="/sign/new" element={<SignPrepare />} />
               <Route path="/sign/:id" element={<SignDetail />} />
