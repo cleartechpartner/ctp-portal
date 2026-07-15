@@ -442,3 +442,24 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 
 .es-tpl-list{display:flex;gap:6px;flex-wrap:wrap}
 .es-tpl-chip{cursor:pointer;font-family:inherit}
+/* ===== Task management (module namespace: tm-) ===== */
+.tm-form-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(180px,1.6fr) 150px 130px 120px;gap:12px;align-items:end}
+@media(max-width:900px){.tm-form-row{grid-template-columns:1fr 1fr}}
+.tm-form-row .fld{margin-bottom:14px}
+
+.tm-project-row{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tm-project-row:last-child{border-bottom:none}
+.tm-project-main{flex:1;min-width:200px}
+
+.tm-edit-row{display:flex;gap:10px;align-items:center;flex:1;flex-wrap:wrap}
+.tm-edit-row .ti{flex:1;min-width:140px}
+.tm-edit-row .ti[type=date]{flex:0 0 150px}
+.tm-weeks{flex:0 0 90px!important;text-align:center}
+
+.tm-pay{cursor:pointer;font-family:inherit}
+.tm-paid{color:#0b7d5c;border-color:#bfe9da;background:#effaf5}
+.tm-unpaid{color:#8a6d1a;border-color:#ecdfb0;background:#fdf8e7}
+
+.tm-st-active{background:#effaf5;color:#0b7d5c;border:1px solid #bfe9da}
+.tm-st-on_hold{background:#fdf8e7;color:#8a6d1a;border:1px solid #ecdfb0}
+.tm-st-complete{background:var(--bg);color:var(--dim);border:1px solid var(--line)}
