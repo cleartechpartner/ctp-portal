@@ -29,7 +29,7 @@ function weeksLabel(w) {
 
 const EMPTY_FORM = { client_id: '', name: '', start_date: todayISO(), target_duration_weeks: 4, payment_status: 'paid' };
 
-export default function TaskProjects() {
+export default function TaskProjects({ embedded }) {
   const [clients, setClients] = useState(null);
   const [projects, setProjects] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -104,20 +104,13 @@ export default function TaskProjects() {
 
   if (!clients) return <div className="center"><div className="sp" /></div>;
 
-  const clientName = Object.fromEntries(clients.map(c => [c.id, c.name]));
   const grouped = clients
     .map(c => ({ client: c, rows: projects.filter(p => p.client_id === c.id) }))
     .filter(g => g.rows.length > 0);
 
-  return (
-    <div className="page">
-      <div className="co-header">
-        <div>
-          <h1>Projects</h1>
-          <p className="sub">One project per engagement phase. Tasks, templates and the forecast all hang off these.</p>
-        </div>
-      </div>
-
+  // Renders inside the Tasks module container (embedded) or as its own page.
+  const body = (
+    <>
       {err && <div className="auth-err" style={{ marginBottom: 14 }}>{err}</div>}
 
       <form className="card spine" onSubmit={create}>
@@ -208,6 +201,20 @@ export default function TaskProjects() {
           </div>
         </div>
       ))}
+    </>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <div className="page">
+      <div className="co-header">
+        <div>
+          <h1>Projects</h1>
+          <p className="sub">One project per engagement phase. Tasks, templates and the forecast all hang off these.</p>
+        </div>
+      </div>
+      {body}
     </div>
   );
 }
