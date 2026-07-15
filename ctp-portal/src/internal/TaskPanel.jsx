@@ -60,6 +60,68 @@ const CELEBRATIONS = [
   }
 ];
 
+// Month grid: Monday-start weeks, tasks sit on their due date's cell.
+function CalendarView({ monthDate, tasks, onPrev, onNext, onToday, onOpen }) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const first = new Date(year, month, 1);
+  const gridStart = new Date(first);
+  gridStart.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+
+  const days = [];
+  const d = new Date(gridStart);
+  do {
+    days.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  } while (d.getMonth() === month || d.getDay() !== 1 || days.length < 7);
+
+  const key = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  const todayKey = key(new Date());
+  const byDay = {};
+  for (const t of tasks) {
+    if (!t.due_date) continue;
+    (byDay[t.due_date] = byDay[t.due_date] || []).push(t);
+  }
+  const undated = tasks.filter(t => !t.due_date && t.status === 'open').length;
+  const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="tm-cal-head">
+        <div className="row">
+          <button className="btn sm gh" onClick={onPrev}>&lt;</button>
+          <button className="btn sm gh" onClick={onToday}>Today</button>
+          <button className="btn sm gh" onClick={onNext}>&gt;</button>
+        </div>
+        <b>{monthLabel}</b>
+        <span className="sub">{undated ? `${undated} open without a due date (list view shows them)` : ''}</span>
+      </div>
+      <div className="tm-cal-grid tm-cal-week">
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(w => <div key={w} className="tm-cal-wd">{w}</div>)}
+      </div>
+      <div className="tm-cal-grid">
+        {days.map(day => {
+          const k = key(day);
+          const inMonth = day.getMonth() === month;
+          return (
+            <div key={k} className={'tm-cal-cell' + (inMonth ? '' : ' out') + (k === todayKey ? ' today' : '')}>
+              <div className="tm-cal-daynum">{day.getDate()}</div>
+              {(byDay[k] || []).map(t => (
+                <button key={t.id} type="button"
+                  className={'tm-cal-task' + (t.status === 'done' ? ' done' : '') + (isOverdue(t) ? ' late' : '')}
+                  title={t.title + (t.clients?.name ? ' | ' + t.clients.name : ' | Internal')}
+                  onClick={() => onOpen(t.id)}>
+                  {t.title}
+                </button>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function celebrateCompletion(profileId, e) {
   let n = 1;
   try {
@@ -82,7 +144,7 @@ function previewKind(name) {
 // Multi-select staff picker, used for assignees in the add form and the
 // task panel. Works like a dropdown: button shows the selection, the
 // popover lists every staff member with a checkbox.
-function AssigneePicker({ staff, value, onChange, placeholder }) {
+function AssigneePicker({ staff, value, onChange, placeholder, avatarMode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -98,11 +160,19 @@ function AssigneePicker({ staff, value, onChange, placeholder }) {
     : selected.map(staffName).join(', ');
 
   return (
-    <div className="tm-picker" ref={ref}>
-      <button type="button" className="tm-picker-btn" onClick={() => setOpen(o => !o)}>
-        <span className="tm-picker-label">{label}</span>
-        <span className="tm-picker-caret">▾</span>
-      </button>
+    <div className={'tm-picker' + (avatarMode ? ' tm-picker-avatar' : '')} ref={ref}>
+      {avatarMode ? (
+        <button type="button" className="tm-avatar-trigger" title={label} onClick={() => setOpen(o => !o)}>
+          {selected.length === 0 && <span className="tm-avatar tm-avatar-add">+</span>}
+          {selected.slice(0, 3).map(s => <span key={s.id} className="tm-avatar">{initials(s)}</span>)}
+          {selected.length > 3 && <span className="tm-avatar tm-avatar-empty">+{selected.length - 3}</span>}
+        </button>
+      ) : (
+        <button type="button" className="tm-picker-btn" onClick={() => setOpen(o => !o)}>
+          <span className="tm-picker-label">{label}</span>
+          <span className="tm-picker-caret">▾</span>
+        </button>
+      )}
       {open && (
         <div className="tm-picker-pop">
           {staff.map(s => (
@@ -129,6 +199,8 @@ export default function TaskPanel({ profile, fixedClientId }) {
   const [clients, setClients] = useState([]);
   const [bucket, setBucket] = useState(fixedClientId ? fixedClientId : ALL);
   const [person, setPerson] = useState('');
+  const [view, setView] = useState('list'); // list | calendar
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; });
   const [showDone, setShowDone] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [preview, setPreview] = useState(null); // { name, url, kind } | { name, loading }
@@ -175,6 +247,20 @@ export default function TaskPanel({ profile, fixedClientId }) {
   };
   useEffect(() => { load(); }, []);
   useEffect(() => { setNewAssignees(a => a.length ? a : (profile ? [profile.id] : [])); }, [profile?.id]);
+
+  // Refetch whenever this surface regains attention, so a list left open in
+  // another browser tab or window can never show stale data after a task
+  // was created somewhere else.
+  useEffect(() => {
+    const onFocus = () => load();
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   const effectiveBucket = fixedClientId || bucket;
   const inBucket = (t) => {
@@ -296,9 +382,12 @@ export default function TaskPanel({ profile, fixedClientId }) {
         <div className="tm-task-main" onClick={() => setExpandedId(t.id)}>
           <div className={'nm' + (t.status === 'done' ? ' tm-done-title' : '')}>{t.title}</div>
           <div className="tm-bubbles">
-            {assignees.length === 0 && <span className="tm-bubble tm-b-assignee">Unassigned</span>}
-            {assignees.map(a => <span key={a.id} className="tm-bubble tm-b-assignee">{staffName(a)}</span>)}
             <span className="tm-bubble tm-b-client">{t.clients?.name || 'Internal'}</span>
+            <span className="tm-avatars tm-row-avatars" title={assignees.map(staffName).join(', ') || 'Unassigned'}>
+              {assignees.length === 0 && <span className="tm-avatar tm-avatar-empty">?</span>}
+              {assignees.slice(0, 3).map(a => <span key={a.id} className="tm-avatar">{initials(a)}</span>)}
+              {assignees.length > 3 && <span className="tm-avatar tm-avatar-empty">+{assignees.length - 3}</span>}
+            </span>
             <span className={'tm-bubble ' + (overdue ? 'tm-b-overdue' : 'tm-b-due')}>
               {fmtDue(t.due_date)}{overdue ? ' | overdue' : ''}
             </span>
@@ -320,6 +409,10 @@ export default function TaskPanel({ profile, fixedClientId }) {
   // entirely inside the new-task form below.
   const filters = (
     <>
+      <div className="lang-toggle">
+        <button type="button" className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>List</button>
+        <button type="button" className={view === 'calendar' ? 'on' : ''} onClick={() => setView('calendar')}>Calendar</button>
+      </div>
       {!fixedClientId && (
         <select className="sel tm-toolbar-sel" value={bucket} onChange={e => { setBucket(e.target.value); setExpandedId(null); }}>
           <option value={ALL}>All ({openCount(ALL)} open)</option>
@@ -354,15 +447,9 @@ export default function TaskPanel({ profile, fixedClientId }) {
           <input className="ti" type="date" value={due} onChange={e => setDue(e.target.value)} />
           <button className="btn sm" disabled={busy || !title.trim()}>{busy ? 'Saving…' : 'Add task'}</button>
         </div>
-        {!descOpen ? (
-          <button type="button" className="link-btn tm-desc-toggle" onClick={() => setDescOpen(true)}>+ Add description</button>
-        ) : (
-          <textarea className="ta tm-desc-input" placeholder="Description (optional)" autoFocus
-            value={newDesc} onChange={e => setNewDesc(e.target.value)} />
-        )}
         <div className="tm-newmeta-row">
           <div className="row">
-            <AssigneePicker staff={staff} value={newAssignees} onChange={setNewAssignees} placeholder="Assign to…" />
+            <AssigneePicker avatarMode staff={staff} value={newAssignees} onChange={setNewAssignees} placeholder="Assign to…" />
             {!fixedClientId && (
               <select className="sel tm-newclient" title="Where this task will be created"
                 value={newClient} onChange={e => setNewClient(e.target.value)}>
@@ -387,23 +474,44 @@ export default function TaskPanel({ profile, fixedClientId }) {
             </div>
           )}
         </div>
+        {!descOpen ? (
+          <button type="button" className="link-btn tm-desc-toggle" onClick={() => setDescOpen(true)}>+ Add description</button>
+        ) : (
+          <textarea className="ta tm-desc-input" placeholder="Description (optional)" autoFocus
+            value={newDesc} onChange={e => setNewDesc(e.target.value)} />
+        )}
       </form>
 
-      <div className="co-section-label" style={{ marginTop: 20 }}>Open ({open.length})</div>
-      <div className="card" style={{ padding: 0 }}>
-        {open.length === 0 && <div className="empty">Nothing open here. Add a task above.</div>}
-        {open.map(row)}
-      </div>
+      {view === 'list' ? (
+        <>
+          <div className="co-section-label" style={{ marginTop: 20 }}>Open ({open.length})</div>
+          <div className="card" style={{ padding: 0 }}>
+            {open.length === 0 && <div className="empty">Nothing open here. Add a task above.</div>}
+            {open.map(row)}
+          </div>
 
-      <div className="co-section-label" style={{ marginTop: 20 }}>
-        <button className="link-btn" onClick={() => setShowDone(s => !s)}>
-          {showDone ? 'Hide' : 'Show'} done ({done.length})
-        </button>
-      </div>
-      {showDone && (
-        <div className="card" style={{ padding: 0 }}>
-          {done.length === 0 && <div className="empty">Nothing completed here yet.</div>}
-          {done.map(row)}
+          <div className="co-section-label" style={{ marginTop: 20 }}>
+            <button className="link-btn" onClick={() => setShowDone(s => !s)}>
+              {showDone ? 'Hide' : 'Show'} done ({done.length})
+            </button>
+          </div>
+          {showDone && (
+            <div className="card" style={{ padding: 0 }}>
+              {done.length === 0 && <div className="empty">Nothing completed here yet.</div>}
+              {done.map(row)}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ marginTop: 20 }}>
+          <CalendarView
+            monthDate={calMonth}
+            tasks={[...open, ...done]}
+            onPrev={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+            onNext={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+            onToday={() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setCalMonth(d); }}
+            onOpen={setExpandedId}
+          />
         </div>
       )}
 
