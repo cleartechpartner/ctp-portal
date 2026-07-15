@@ -21,7 +21,62 @@ function CapBar({ state, unitLabel }) {
   );
 }
 
-export default function TimeClients({ projects, clients, onChanged }) {
+// Inline editor for the standalone time categories (add, rename, archive).
+function CategoryManager({ categories, onChanged }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const add = async () => {
+    const n = name.trim();
+    if (!n) return;
+    setBusy(true); setErr('');
+    const pos = categories.reduce((m, c) => Math.max(m, c.position || 0), 0) + 1;
+    const { error } = await supabase.from('time_categories').insert({ name: n, position: pos });
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    setName(''); onChanged && onChanged();
+  };
+
+  const rename = async (c, next) => {
+    if (next.trim() === c.name || !next.trim()) return;
+    const { error } = await supabase.from('time_categories').update({ name: next.trim() }).eq('id', c.id);
+    if (error) { setErr(error.message); return; }
+    onChanged && onChanged();
+  };
+
+  const toggleArchive = async (c) => {
+    const { error } = await supabase.from('time_categories').update({ archived: !c.archived }).eq('id', c.id);
+    if (error) { setErr(error.message); return; }
+    onChanged && onChanged();
+  };
+
+  return (
+    <div className="card">
+      <h3>Time categories</h3>
+      <div className="sub" style={{ marginBottom: 12 }}>The list of categories offered when logging time. Independent of Task Manager tasks.</div>
+      {err && <div className="auth-err" style={{ marginBottom: 10 }}>{err}</div>}
+      <div className="cat-list">
+        {categories.map(c => (
+          <div key={c.id} className={'cat-row' + (c.archived ? ' archived' : '')}>
+            <input className="ti" defaultValue={c.name}
+              onBlur={e => rename(c, e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
+            <button className="btn sm gh" onClick={() => toggleArchive(c)}>{c.archived ? 'Restore' : 'Archive'}</button>
+          </div>
+        ))}
+      </div>
+      <div className="ts-addrow" style={{ marginTop: 12 }}>
+        <input className="ti" placeholder="New category name" value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') add(); }} />
+        <button className="btn sm" disabled={busy || !name.trim()} onClick={add}>Add category</button>
+      </div>
+    </div>
+  );
+}
+
+export default function TimeClients({ projects, clients, categories = [], onChanged, onCategoriesChanged }) {
   const [month, setMonth] = useState(monthKey(new Date()));
   const [entries, setEntries] = useState(null);
   const [err, setErr] = useState('');
@@ -44,7 +99,8 @@ export default function TimeClients({ projects, clients, onChanged }) {
 
   const byId = Object.fromEntries(projects.map(p => [p.id, p]));
   const clientProjects = (cid) => projects.filter(p => p.client_id === cid);
-  const clientEntries = (cid) => entries.filter(e => byId[e.project_id]?.client_id === cid);
+  // New entries carry client_id directly; legacy ones resolve it via project.
+  const clientEntries = (cid) => entries.filter(e => (e.client_id || byId[e.project_id]?.client_id) === cid);
   const projectEntries = (pid) => entries.filter(e => e.project_id === pid);
 
   const hoursLabel = (v) => `${Math.round(v * 100) / 100} h`;
@@ -87,18 +143,20 @@ export default function TimeClients({ projects, clients, onChanged }) {
       ['Month', month],
       ['Exported', new Date().toISOString()],
       [],
-      ['Date', 'Work type', 'Project', 'Notes', 'Billable', 'Hours', 'Rate (EUR)', 'Amount (EUR)']
+      ['Date', 'Category', 'Notes', 'Billable', 'Hours', 'Rate (EUR)', 'Amount (EUR)']
     ];
+    const catById = Object.fromEntries((categories || []).map(x => [x.id, x]));
     let totalSec = 0;
     let totalAmount = 0;
     for (const e of es) {
       const p = byId[e.project_id];
+      const cat = e.category_id ? (catById[e.category_id]?.name || '') : (p ? `${p.type} | ${p.title}` : '');
       const rate = e.rate != null ? +e.rate : (c.hourly_rate != null ? +c.hourly_rate : '');
       const amount = e.billable && rate !== '' ? Math.round((e.duration_seconds / 3600) * rate * 100) / 100 : '';
       totalSec += e.duration_seconds;
       if (amount !== '') totalAmount += amount;
       rows.push([
-        dateKey(e.started_at), p?.type || '', p?.title || '', e.notes || '',
+        dateKey(e.started_at), cat, e.notes || '',
         e.billable ? 'yes' : 'no', secToDec(e.duration_seconds),
         rate === '' ? '' : rate, amount
       ]);
@@ -122,6 +180,8 @@ export default function TimeClients({ projects, clients, onChanged }) {
         <input className="ti" type="month" style={{ maxWidth: 180 }} value={month} onChange={e => setMonth(e.target.value)} />
         <span className="sub">Caps are measured per calendar month. They warn, they never block.</span>
       </div>
+
+      <CategoryManager categories={categories} onChanged={onCategoriesChanged} />
 
       {clients.filter(c => c.status !== 'archived').map(c => {
         const ces = clientEntries(c.id);

@@ -3,6 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useLang } from '../lib/i18n';
 import { LOGO } from '../lib/logo';
+import Avatar from './Avatar';
+import SettingsPanel from './SettingsPanel';
 
 // Dropdown shown only when a profile can access 2+ clients. Selecting one
 // updates profiles.client_id (the DB trigger validates the target), then
@@ -44,6 +46,9 @@ export default function Shell({ profile, internal, clientLinks, children }) {
   const { t } = useLang();
   const location = useLocation();
   const onStudio = location.pathname.startsWith('/studio');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || null);
+  const accountProfile = { ...profile, avatar_url: avatarUrl };
 
   const nav = internal
     ? [
@@ -83,15 +88,45 @@ export default function Shell({ profile, internal, clientLinks, children }) {
           )}
         </nav>
         <div className="foot">
-          <div className="who">{profile.full_name || profile.email}</div>
-          <button className="btn sm gh" onClick={() => supabase.auth.signOut()}>{t('signOut')}</button>
+          <div className="account-row">
+            <Avatar profile={accountProfile} size={34} />
+            <div className="who">{profile.full_name || profile.email}</div>
+          </div>
+          <div className="account-actions">
+            <button className="btn sm gh" onClick={() => supabase.auth.signOut()}>{t('signOut')}</button>
+            <button
+              className="icon-btn gear-btn"
+              title={t('settingsTitle')}
+              aria-label={t('settingsTitle')}
+              onClick={() => setSettingsOpen(true)}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </aside>
+
+      {settingsOpen && (
+        <SettingsPanel
+          profile={accountProfile}
+          onClose={() => setSettingsOpen(false)}
+          onAvatarChange={setAvatarUrl}
+        />
+      )}
       <div className="main">
         <div className="topbar">
           <div className="logo-row"><img src={LOGO} alt="" /><span className="wm">Clear Tech Partner</span></div>
           <div className="row">
             {!internal && <ClientSwitch profile={profile} clientLinks={clientLinks} />}
+            <button className="icon-btn" title={t('settingsTitle')} aria-label={t('settingsTitle')} onClick={() => setSettingsOpen(true)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
             <button className="btn sm gh" onClick={() => supabase.auth.signOut()}>{t('signOut')}</button>
           </div>
         </div>
