@@ -34,6 +34,50 @@ function previewKind(name) {
   return 'other';
 }
 
+// Multi-select staff picker, used for assignees in the add form and the
+// task panel. Works like a dropdown: button shows the selection, the
+// popover lists every staff member with a checkbox.
+function AssigneePicker({ staff, value, onChange, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  const selected = staff.filter(s => value.includes(s.id));
+  const label = selected.length === 0
+    ? (placeholder || 'Assign to…')
+    : selected.map(staffName).join(', ');
+
+  return (
+    <div className="tm-picker" ref={ref}>
+      <button type="button" className="tm-picker-btn" onClick={() => setOpen(o => !o)}>
+        <span className="tm-picker-label">{label}</span>
+        <span className="tm-picker-caret">▾</span>
+      </button>
+      {open && (
+        <div className="tm-picker-pop">
+          {staff.map(s => (
+            <label key={s.id} className="tm-picker-opt">
+              <input
+                type="checkbox"
+                checked={value.includes(s.id)}
+                onChange={() => onChange(value.includes(s.id) ? value.filter(x => x !== s.id) : [...value, s.id])}
+              />
+              <span className="tm-avatar">{initials(s)}</span>
+              {staffName(s)}
+            </label>
+          ))}
+          {staff.length === 0 && <div className="sub" style={{ padding: 10 }}>No staff profiles found.</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TaskPanel({ profile, fixedClientId }) {
   const [tasks, setTasks] = useState(null);
   const [staff, setStaff] = useState([]);
@@ -153,55 +197,58 @@ export default function TaskPanel({ profile, fixedClientId }) {
     setPreview({ name: att.file_name, url: data.signedUrl, kind: previewKind(att.file_name) });
   };
 
-  const toggleNewAssignee = (pid) =>
-    setNewAssignees(a => a.includes(pid) ? a.filter(x => x !== pid) : [...a, pid]);
+  // Escape closes whichever layer is on top: preview first, then the panel.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      setPreview(p => {
+        if (p) return null;
+        setExpandedId(null);
+        return p;
+      });
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   if (!tasks) return <div className="center"><div className="sp" /></div>;
 
   const staffById = Object.fromEntries(staff.map(s => [s.id, s]));
 
+  const expandedTask = expandedId ? (tasks || []).find(t => t.id === expandedId) : null;
+
   const row = (t) => {
     const assignees = (t.task_assignees || []).map(a => staffById[a.profile_id]).filter(Boolean);
     const overdue = isOverdue(t);
     return (
-      <div key={t.id}>
-        <div className="tm-task-row">
-          <input
-            type="checkbox"
-            className="tm-done-check"
-            checked={t.status === 'done'}
-            title={t.status === 'done' ? 'Reopen' : 'Mark done'}
-            onChange={() => {}}
-            onClick={(e) => toggleDone(t, e)}
-          />
-          <div className="tm-task-main" onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}>
-            <div className={'nm' + (t.status === 'done' ? ' tm-done-title' : '')}>{t.title}</div>
-            <div className="tm-bubbles">
-              {assignees.length === 0 && <span className="tm-bubble tm-b-assignee">Unassigned</span>}
-              {assignees.map(a => <span key={a.id} className="tm-bubble tm-b-assignee">{staffName(a)}</span>)}
-              <span className="tm-bubble tm-b-client">{t.clients?.name || 'Internal'}</span>
-              <span className={'tm-bubble ' + (overdue ? 'tm-b-overdue' : 'tm-b-due')}>
-                {fmtDue(t.due_date)}{overdue ? ' | overdue' : ''}
-              </span>
-              {(t.task_attachments || []).map(att => (
-                <button key={att.id} type="button" className="tm-bubble tm-b-attach"
-                  title="Preview attachment"
-                  onClick={(e) => { e.stopPropagation(); openPreview(att); }}>
-                  {att.file_name.length > 24 ? att.file_name.slice(0, 21) + '…' : att.file_name}
-                </button>
-              ))}
-            </div>
+      <div key={t.id} className="tm-task-row">
+        <input
+          type="checkbox"
+          className="tm-done-check"
+          checked={t.status === 'done'}
+          title={t.status === 'done' ? 'Reopen' : 'Mark done'}
+          onChange={() => {}}
+          onClick={(e) => toggleDone(t, e)}
+        />
+        <div className="tm-task-main" onClick={() => setExpandedId(t.id)}>
+          <div className={'nm' + (t.status === 'done' ? ' tm-done-title' : '')}>{t.title}</div>
+          <div className="tm-bubbles">
+            {assignees.length === 0 && <span className="tm-bubble tm-b-assignee">Unassigned</span>}
+            {assignees.map(a => <span key={a.id} className="tm-bubble tm-b-assignee">{staffName(a)}</span>)}
+            <span className="tm-bubble tm-b-client">{t.clients?.name || 'Internal'}</span>
+            <span className={'tm-bubble ' + (overdue ? 'tm-b-overdue' : 'tm-b-due')}>
+              {fmtDue(t.due_date)}{overdue ? ' | overdue' : ''}
+            </span>
+            {(t.task_attachments || []).map(att => (
+              <button key={att.id} type="button" className="tm-bubble tm-b-attach"
+                title="Preview attachment"
+                onClick={(e) => { e.stopPropagation(); openPreview(att); }}>
+                {att.file_name.length > 24 ? att.file_name.slice(0, 21) + '…' : att.file_name}
+              </button>
+            ))}
           </div>
-          <button className="icon-btn icon-btn-danger" title="Delete task" onClick={() => deleteTask(t)}>×</button>
         </div>
-        {expandedId === t.id && (
-          <TaskEditor
-            task={t} staff={staff} clients={clients} profile={profile}
-            lockedClientId={fixedClientId}
-            onChanged={load} onError={setErr} onClose={() => setExpandedId(null)}
-            patchTask={patchTask}
-          />
-        )}
+        <button className="icon-btn icon-btn-danger" title="Delete task" onClick={() => deleteTask(t)}>×</button>
       </div>
     );
   };
@@ -233,16 +280,7 @@ export default function TaskPanel({ profile, fixedClientId }) {
           <button className="btn sm" disabled={busy || !title.trim()}>{busy ? 'Saving…' : 'Add task'}</button>
         </div>
         <div className="tm-newmeta-row">
-          <div className="tm-assignee-chips">
-            {staff.map(s => (
-              <button type="button" key={s.id}
-                className={'tm-chip-toggle' + (newAssignees.includes(s.id) ? ' on' : '')}
-                title={staffName(s)}
-                onClick={() => toggleNewAssignee(s.id)}>
-                <span className="tm-avatar">{initials(s)}</span>{staffName(s)}
-              </button>
-            ))}
-          </div>
+          <AssigneePicker staff={staff} value={newAssignees} onChange={setNewAssignees} placeholder="Assign to…" />
           <label className="link-btn" style={{ cursor: 'pointer' }}>
             {newFile ? newFile.name : 'Attach a file (optional)'}
             <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={e => setNewFile(e.target.files?.[0] || null)} />
@@ -265,6 +303,24 @@ export default function TaskPanel({ profile, fixedClientId }) {
         <div className="card" style={{ padding: 0 }}>
           {done.length === 0 && <div className="empty">Nothing completed here yet.</div>}
           {done.map(row)}
+        </div>
+      )}
+
+      {expandedTask && (
+        <div className="tm-slideover-backdrop" onClick={() => setExpandedId(null)}>
+          <aside className="tm-slideover" onClick={e => e.stopPropagation()}>
+            <div className="tm-slideover-head">
+              <h3>Task</h3>
+              <button className="icon-btn" title="Close" onClick={() => setExpandedId(null)}>×</button>
+            </div>
+            <TaskEditor
+              key={expandedTask.id}
+              task={expandedTask} staff={staff} clients={clients} profile={profile}
+              lockedClientId={fixedClientId}
+              onChanged={load} onError={setErr} onClose={() => setExpandedId(null)}
+              patchTask={patchTask}
+            />
+          </aside>
         </div>
       )}
 
@@ -387,7 +443,7 @@ function TaskEditor({ task, staff, clients, profile, lockedClientId, onChanged, 
   };
 
   const fmtStamp = (ts) => new Date(ts).toLocaleString('en-GB', {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 
   return (
@@ -412,15 +468,7 @@ function TaskEditor({ task, staff, clients, profile, lockedClientId, onChanged, 
         )}
         <div className="fld">
           <label className="lab">Assignees</label>
-          <div className="tm-assignee-chips">
-            {staff.map(s => (
-              <button type="button" key={s.id}
-                className={'tm-chip-toggle' + (assigned.includes(s.id) ? ' on' : '')}
-                onClick={() => setAssigned(a => a.includes(s.id) ? a.filter(x => x !== s.id) : [...a, s.id])}>
-                <span className="tm-avatar">{initials(s)}</span>{staffName(s)}
-              </button>
-            ))}
-          </div>
+          <AssigneePicker staff={staff} value={assigned} onChange={setAssigned} placeholder="Assign to…" />
         </div>
       </div>
       <div className="fld">
