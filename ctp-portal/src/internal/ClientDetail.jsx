@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { translate, notify, inviteClient, signedUrl, fmtBytes, monthLabel } from '../lib/api';
+import TaskPanel from './TaskPanel';
 
 const PROJECT_TYPES = ['AI guest agents', 'Systems and integrations', 'Consulting and operations', 'Other'];
 const PROJECT_STATUS = ['planned', 'in_progress', 'live', 'paused', 'complete'];
@@ -57,7 +58,7 @@ export default function ClientDetail({ profile }) {
       </div>
 
       <div className="tabs">
-        {['overview', 'reports', 'updates', 'documents', 'access'].map(x => (
+        {['overview', 'tasks', 'reports', 'updates', 'documents', 'access'].map(x => (
           <button key={x} className={'tab' + (tab === x ? ' on' : '')} onClick={() => setTab(x)}>
             {x[0].toUpperCase() + x.slice(1)}
           </button>
@@ -65,6 +66,7 @@ export default function ClientDetail({ profile }) {
       </div>
 
       {tab === 'overview' && <Overview client={client} onSaved={loadClient} toast={toast} />}
+      {tab === 'tasks' && <TaskPanel profile={profile} fixedClientId={client.id} />}
       {tab === 'reports' && <ReportsTab client={client} toast={toast} />}
       {tab === 'updates' && <UpdatesTab client={client} toast={toast} />}
       {tab === 'documents' && <DocumentsTab client={client} toast={toast} />}

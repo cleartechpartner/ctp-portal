@@ -54,7 +54,7 @@ export function fmtDue(dateStr) {
 export async function fetchTasks() {
   const { data, error } = await supabase
     .from('tasks')
-    .select('*, clients(id, name), task_assignees(profile_id)')
+    .select('*, clients(id, name), task_assignees(profile_id), task_attachments(id, file_name, file_path)')
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return data || [];
