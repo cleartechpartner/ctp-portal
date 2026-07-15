@@ -10,7 +10,7 @@ import ClientDetail from './internal/ClientDetail';
 import Studio from './internal/Studio';
 import Settings from './internal/Settings';
 import Time from './internal/Time';
-import TaskProjects from './internal/TaskProjects';
+import Tasks from './internal/Tasks';
 import ClientHome from './client/ClientHome';
 import Reports from './client/Reports';
 import Updates from './client/Updates';
@@ -109,7 +109,7 @@ export default function App() {
               <Route path="/sign" element={<Sign />} />
               <Route path="/sign/new" element={<SignPrepare />} />
               <Route path="/sign/:id" element={<SignDetail />} />
-              <Route path="/tasks" element={<TaskProjects />} />
+              <Route path="/tasks" element={<Tasks profile={profile} />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
