@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "canvas-confetti": "^1.9.4",
     "jsdom": "^29.1.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
