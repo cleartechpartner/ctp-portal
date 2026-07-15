@@ -14,17 +14,62 @@ import {
 const ALL = 'all';
 const INTERNAL = 'internal';
 
-function celebrate(e) {
-  confetti({
-    particleCount: 90,
-    spread: 70,
-    startVelocity: 32,
-    disableForReducedMotion: true,
-    origin: {
-      x: e?.clientX ? e.clientX / window.innerWidth : 0.5,
-      y: e?.clientY ? e.clientY / window.innerHeight : 0.4
-    }
-  });
+// ---------- completion celebrations ----------
+// Fires only on every third completion per person (their own counter,
+// kept in this browser), rotating three original animations so it keeps
+// its impact: confetti burst, star sparkle, streamers from the edges.
+
+function originFrom(e) {
+  return {
+    x: e?.clientX ? e.clientX / window.innerWidth : 0.5,
+    y: e?.clientY ? e.clientY / window.innerHeight : 0.4
+  };
+}
+
+const CELEBRATIONS = [
+  function burst(e) {
+    confetti({
+      particleCount: 110, spread: 75, startVelocity: 34,
+      disableForReducedMotion: true, origin: originFrom(e)
+    });
+  },
+  function sparkle(e) {
+    const origin = originFrom(e);
+    confetti({
+      particleCount: 40, spread: 100, startVelocity: 22, gravity: 0.55,
+      shapes: ['star'], scalar: 1.4, ticks: 220,
+      colors: ['#FFD700', '#FFF3B0', '#00B8E6', '#ffffff'],
+      disableForReducedMotion: true, origin
+    });
+    setTimeout(() => confetti({
+      particleCount: 18, spread: 360, startVelocity: 8, gravity: 0.4,
+      shapes: ['star'], scalar: 0.8, ticks: 160,
+      colors: ['#FFD700', '#ffffff'],
+      disableForReducedMotion: true, origin
+    }), 180);
+  },
+  function streamers() {
+    const common = {
+      particleCount: 55, spread: 24, startVelocity: 55, gravity: 0.85,
+      shapes: ['square'], scalar: 1.8, ticks: 260, drift: 0.4,
+      colors: ['#0052FF', '#00B8E6', '#2ED6A6', '#7C5CFC', '#EF9F27'],
+      disableForReducedMotion: true
+    };
+    confetti({ ...common, angle: 60, origin: { x: 0, y: 0.75 } });
+    confetti({ ...common, angle: 120, drift: -0.4, origin: { x: 1, y: 0.75 } });
+  }
+];
+
+function celebrateCompletion(profileId, e) {
+  let n = 1;
+  try {
+    const key = 'tm-completions-' + profileId;
+    n = (parseInt(localStorage.getItem(key), 10) || 0) + 1;
+    localStorage.setItem(key, String(n));
+  } catch { /* private mode: fall back to counting this one as the first */ }
+  if (n % 3 !== 0) return;
+  const round = Math.floor(n / 3) - 1;
+  CELEBRATIONS[round % CELEBRATIONS.length](e);
 }
 
 function previewKind(name) {
@@ -89,13 +134,31 @@ export default function TaskPanel({ profile, fixedClientId }) {
   const [preview, setPreview] = useState(null); // { name, url, kind } | { name, loading }
   const [err, setErr] = useState('');
 
-  // New task form
+  // New task form. newClient is picked explicitly in the form: the top
+  // dropdown only filters the list and never decides where a task lands.
   const [title, setTitle] = useState('');
   const [due, setDue] = useState(todayISO());
   const [newAssignees, setNewAssignees] = useState([]);
+  const [newClient, setNewClient] = useState(fixedClientId || INTERNAL);
+  const [descOpen, setDescOpen] = useState(false);
+  const [newDesc, setNewDesc] = useState('');
   const [newFile, setNewFile] = useState(null);
+  const [newFileUrl, setNewFileUrl] = useState(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef(null);
+
+  // Follow the filter as the default, stays editable in the form.
+  useEffect(() => {
+    if (!fixedClientId) setNewClient(bucket === ALL ? INTERNAL : bucket);
+  }, [bucket, fixedClientId]);
+
+  // Object URL for the attachment thumbnail, released when replaced.
+  useEffect(() => {
+    if (!newFile) { setNewFileUrl(null); return; }
+    const url = URL.createObjectURL(newFile);
+    setNewFileUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [newFile]);
 
   const load = async () => {
     setErr('');
@@ -144,7 +207,7 @@ export default function TaskPanel({ profile, fixedClientId }) {
   const toggleDone = async (t, e) => {
     const next = t.status === 'done' ? 'open' : 'done';
     const ok = await patchTask(t.id, statusPatch(next));
-    if (ok && next === 'done') celebrate(e);
+    if (ok && next === 'done') celebrateCompletion(profile.id, e);
   };
 
   const addTask = async (e) => {
@@ -152,15 +215,15 @@ export default function TaskPanel({ profile, fixedClientId }) {
     if (!title.trim()) { setErr('The task needs a title.'); return; }
     setBusy(true); setErr('');
     try {
-      const clientForNew = fixedClientId
-        ? fixedClientId
-        : (bucket === ALL || bucket === INTERNAL) ? null : bucket;
-      const { data, error } = await supabase.from('tasks').insert({
+      const clientForNew = fixedClientId || (newClient === INTERNAL ? null : newClient);
+      const row = {
         client_id: clientForNew,
         title: title.trim(),
         due_date: due || null,
         created_by: profile.id
-      }).select('id').single();
+      };
+      if (newDesc.trim()) row.description = newDesc.trim();
+      const { data, error } = await supabase.from('tasks').insert(row).select('id').single();
       if (error) throw new Error(error.message);
       if (newAssignees.length) await setAssignees(data.id, newAssignees);
       if (newFile) {
@@ -172,7 +235,7 @@ export default function TaskPanel({ profile, fixedClientId }) {
         });
         if (attErr) throw new Error('Task saved, but the file failed: ' + attErr.message);
       }
-      setTitle(''); setNewFile(null);
+      setTitle(''); setNewFile(null); setNewDesc(''); setDescOpen(false);
       if (fileRef.current) fileRef.current.value = '';
       await load();
     } catch (ex) { setErr(ex.message); }
@@ -253,38 +316,76 @@ export default function TaskPanel({ profile, fixedClientId }) {
     );
   };
 
+  // The dropdowns only decide what the list shows. Creation is controlled
+  // entirely inside the new-task form below.
+  const filters = (
+    <>
+      {!fixedClientId && (
+        <select className="sel tm-toolbar-sel" value={bucket} onChange={e => { setBucket(e.target.value); setExpandedId(null); }}>
+          <option value={ALL}>All ({openCount(ALL)} open)</option>
+          <option value={INTERNAL}>Internal ({openCount(INTERNAL)} open)</option>
+          {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({openCount(c.id)} open)</option>)}
+        </select>
+      )}
+      <select className="sel tm-toolbar-sel" value={person} onChange={e => setPerson(e.target.value)}>
+        <option value="">Everyone</option>
+        {staff.map(s => <option key={s.id} value={s.id}>{staffName(s)}</option>)}
+      </select>
+    </>
+  );
+
   return (
     <>
+      {!fixedClientId ? (
+        <div className="co-header">
+          <div><h1>Tasks</h1></div>
+          <div className="co-actions">{filters}</div>
+        </div>
+      ) : (
+        <div className="tm-toolbar tm-toolbar-right">{filters}</div>
+      )}
+
       {err && <div className="auth-err" style={{ marginBottom: 14 }}>{err}</div>}
 
-      <div className="tm-toolbar">
-        {!fixedClientId && (
-          <select className="sel tm-toolbar-sel" value={bucket} onChange={e => { setBucket(e.target.value); setExpandedId(null); }}>
-            <option value={ALL}>All ({openCount(ALL)} open)</option>
-            <option value={INTERNAL}>Internal ({openCount(INTERNAL)} open)</option>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({openCount(c.id)} open)</option>)}
-          </select>
-        )}
-        <select className="sel tm-toolbar-sel" value={person} onChange={e => setPerson(e.target.value)}>
-          <option value="">Everyone</option>
-          {staff.map(s => <option key={s.id} value={s.id}>{staffName(s)}</option>)}
-        </select>
-      </div>
-
-      <form className="card spine" onSubmit={addTask}>
+      <form className="tm-newcard" onSubmit={addTask}>
         <div className="tm-quick-row">
-          <input className="ti"
-            placeholder={fixedClientId ? 'New task for this client…' : effectiveBucket === INTERNAL ? 'New internal task…' : effectiveBucket === ALL ? 'New internal task… (pick a bucket to add under a client)' : 'New task for this client…'}
+          <input className="ti" placeholder="Task details."
             value={title} onChange={e => setTitle(e.target.value)} />
           <input className="ti" type="date" value={due} onChange={e => setDue(e.target.value)} />
           <button className="btn sm" disabled={busy || !title.trim()}>{busy ? 'Saving…' : 'Add task'}</button>
         </div>
+        {!descOpen ? (
+          <button type="button" className="link-btn tm-desc-toggle" onClick={() => setDescOpen(true)}>+ Add description</button>
+        ) : (
+          <textarea className="ta tm-desc-input" placeholder="Description (optional)" autoFocus
+            value={newDesc} onChange={e => setNewDesc(e.target.value)} />
+        )}
         <div className="tm-newmeta-row">
-          <AssigneePicker staff={staff} value={newAssignees} onChange={setNewAssignees} placeholder="Assign to…" />
-          <label className="link-btn" style={{ cursor: 'pointer' }}>
-            {newFile ? newFile.name : 'Attach a file (optional)'}
-            <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={e => setNewFile(e.target.files?.[0] || null)} />
-          </label>
+          <div className="row">
+            <AssigneePicker staff={staff} value={newAssignees} onChange={setNewAssignees} placeholder="Assign to…" />
+            {!fixedClientId && (
+              <select className="sel tm-newclient" title="Where this task will be created"
+                value={newClient} onChange={e => setNewClient(e.target.value)}>
+                <option value={INTERNAL}>Internal</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            )}
+          </div>
+          {!newFile ? (
+            <label className="link-btn" style={{ cursor: 'pointer' }}>
+              Attach a file (optional)
+              <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={e => setNewFile(e.target.files?.[0] || null)} />
+            </label>
+          ) : (
+            <div className="tm-file-preview">
+              {previewKind(newFile.name) === 'image' && newFileUrl
+                ? <img src={newFileUrl} alt="" />
+                : <span className="tm-file-ext">{(newFile.name.split('.').pop() || 'file').toUpperCase().slice(0, 5)}</span>}
+              <span className="tm-file-name" title={newFile.name}>{newFile.name}</span>
+              <button type="button" className="icon-btn icon-btn-danger" title="Remove file"
+                onClick={() => { setNewFile(null); if (fileRef.current) fileRef.current.value = ''; }}>×</button>
+            </div>
+          )}
         </div>
       </form>
 
