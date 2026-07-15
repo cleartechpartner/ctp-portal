@@ -1,41 +1,59 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import TimeToday from './TimeToday';
-import TimeWeek from './TimeWeek';
+import { fetchStaff } from '../lib/tasks';
+import Timesheet from './Timesheet';
 import TimeReports from './TimeReports';
+import TimeSummary from './TimeSummary';
 import TimeClients from './TimeClients';
 
 export default function Time() {
   const location = useLocation();
-  const tab = location.hash === '#week' ? 'week'
-    : location.hash === '#reports' ? 'reports'
+  const tab = location.hash === '#reports' ? 'reports'
+    : location.hash === '#summary' ? 'summary'
     : location.hash === '#clients' ? 'clients'
-    : 'today';
+    : 'timesheet';
 
   const [projects, setProjects] = useState(null);
   const [clients, setClients] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [tasks, setTasks] = useState([]);
+
+  const loadCategories = useCallback(async () => {
+    const { data } = await supabase.from('time_categories').select('*').order('position');
+    setCategories(data || []);
+  }, []);
 
   const load = useCallback(async () => {
-    const [{ data: ps }, { data: cs }] = await Promise.all([
+    const [{ data: ps }, { data: cs }, { data: ts }] = await Promise.all([
       supabase.from('projects')
         .select('id, title, type, status, client_id, time_cap_hours, time_cap_budget, clients(id, name, status, hourly_rate, time_cap_type, time_cap_value)')
         .order('title'),
       supabase.from('clients')
         .select('id, name, status, hourly_rate, time_cap_type, time_cap_value')
-        .order('name')
+        .order('name'),
+      supabase.from('tasks').select('id, title, client_id, status').order('created_at', { ascending: false })
     ]);
     setProjects(ps || []);
     setClients(cs || []);
-  }, []);
+    setTasks(ts || []);
+    let st = [];
+    try { st = await fetchStaff(); } catch { st = []; }
+    setStaff(st);
+    await loadCategories();
+  }, [loadCategories]);
   useEffect(() => { load(); }, [load]);
 
   if (!projects) return <div className="center"><div className="sp" /></div>;
 
+  const activeClients = clients.filter(c => c.status !== 'archived');
+  const activeCategories = categories.filter(c => !c.archived);
+
   const tabs = [
-    { id: 'today', href: '/time', label: 'Today' },
-    { id: 'week', href: '/time#week', label: 'Timesheet' },
-    { id: 'reports', href: '/time#reports', label: 'Reports' },
+    { id: 'timesheet', href: '/time', label: 'Timesheet' },
+    { id: 'reports', href: '/time#reports', label: 'Detailed report' },
+    { id: 'summary', href: '/time#summary', label: 'Summary' },
     { id: 'clients', href: '/time#clients', label: 'Clients & caps' }
   ];
 
@@ -44,20 +62,25 @@ export default function Time() {
       <div className="co-header">
         <div>
           <h1>Time</h1>
-          <p className="sub">Track hours where the clients already live. Caps warn, they never block.</p>
+          <p className="sub">Track hours against a client and a category. Caps warn, they never block.</p>
         </div>
       </div>
 
-      <div className="tt-tabs">
+      <div className="tt-tabs no-print">
         {tabs.map(x => (
           <a key={x.id} href={x.href} className={'tt-tab' + (tab === x.id ? ' on' : '')}>{x.label}</a>
         ))}
       </div>
 
-      {tab === 'today' && <TimeToday projects={projects} />}
-      {tab === 'week' && <TimeWeek projects={projects} />}
-      {tab === 'reports' && <TimeReports projects={projects} clients={clients} />}
-      {tab === 'clients' && <TimeClients projects={projects} clients={clients} onChanged={load} />}
+      {tab === 'timesheet' && <Timesheet clients={activeClients} categories={activeCategories} tasks={tasks} />}
+      {tab === 'reports' && <TimeReports clients={clients} categories={categories} staff={staff} tasks={tasks} />}
+      {tab === 'summary' && <TimeSummary clients={clients} categories={categories} staff={staff} />}
+      {tab === 'clients' && (
+        <TimeClients
+          projects={projects} clients={clients} categories={categories}
+          onChanged={load} onCategoriesChanged={loadCategories}
+        />
+      )}
     </div>
   );
 }

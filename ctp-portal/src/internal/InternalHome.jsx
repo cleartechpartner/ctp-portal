@@ -75,7 +75,7 @@ export default function InternalHome() {
     const { data: cs } = await supabase
       .from('clients')
       .select('*, projects(id, title, type, status)')
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true });
     setClients(cs || []);
 
     const { data: act } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(50);

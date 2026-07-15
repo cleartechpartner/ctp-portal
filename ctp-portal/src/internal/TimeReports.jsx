@@ -1,50 +1,31 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { dateKey, secToHM, secToDec, entriesAmount, fmtMoney } from '../lib/time';
+import { staffName } from '../lib/tasks';
+import {
+  dateKey, secToHM, secToDec, entryAmount, fmtMoney,
+  buildCsv, downloadCsv, safeFileName
+} from '../lib/time';
 
 function monthStart() {
   const d = new Date(); d.setDate(1);
   return dateKey(d);
 }
 
-function BarBlock({ title, rows }) {
-  // rows: [{ label, billableSec, nonBillableSec }]
-  const max = Math.max(1, ...rows.map(r => r.billableSec + r.nonBillableSec));
-  return (
-    <div className="card">
-      <h3>{title}</h3>
-      {rows.length === 0 && <div className="empty">No time in this range.</div>}
-      <div className="tt-bars">
-        {rows.map(r => {
-          const total = r.billableSec + r.nonBillableSec;
-          return (
-            <div key={r.label} className="tt-bar-row">
-              <div className="tt-bar-label" title={r.label}>{r.label}</div>
-              <div className="tt-bar-track">
-                <div className="tt-bar-fill bill" style={{ width: (r.billableSec / max * 100) + '%' }} />
-                <div className="tt-bar-fill nonbill" style={{ width: (r.nonBillableSec / max * 100) + '%' }} />
-              </div>
-              <div className="tt-bar-value">{secToHM(total)}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export default function TimeReports({ projects, clients }) {
+export default function TimeReports({ clients, categories, staff, tasks }) {
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(dateKey(new Date()));
   const [clientId, setClientId] = useState('');
-  const [workType, setWorkType] = useState('');
+  const [personId, setPersonId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [billable, setBillable] = useState('all');
   const [entries, setEntries] = useState(null);
   const [err, setErr] = useState('');
 
-  const byId = Object.fromEntries(projects.map(p => [p.id, p]));
   const clientById = Object.fromEntries(clients.map(c => [c.id, c]));
-  const types = [...new Set(projects.map(p => p.type).filter(Boolean))].sort();
+  const catById = Object.fromEntries(categories.map(c => [c.id, c]));
+  const taskById = Object.fromEntries(tasks.map(t => [t.id, t]));
+  const staffById = Object.fromEntries(staff.map(s => [s.id, s]));
+  const showPerson = staff.length > 1;
 
   const load = async () => {
     setErr('');
@@ -52,58 +33,57 @@ export default function TimeReports({ projects, clients }) {
     const toD = new Date(to + 'T00:00:00'); toD.setDate(toD.getDate() + 1);
     const { data, error } = await supabase.from('time_entries').select('*')
       .gte('started_at', fromD.toISOString())
-      .lt('started_at', toD.toISOString());
+      .lt('started_at', toD.toISOString())
+      .order('started_at', { ascending: true });
     if (error) { setErr(error.message); return; }
     setEntries(data || []);
   };
-  useEffect(() => { load(); }, [from, to]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [from, to]);
 
   if (!entries) return <div className="center"><div className="sp" /></div>;
 
   const filtered = entries.filter(e => {
-    const p = byId[e.project_id];
-    if (!p) return false;
-    if (clientId && p.client_id !== clientId) return false;
-    if (workType && p.type !== workType) return false;
+    if (clientId && e.client_id !== clientId) return false;
+    if (categoryId && e.category_id !== categoryId) return false;
+    if (personId && e.person_id !== personId) return false;
     if (billable === 'billable' && !e.billable) return false;
     if (billable === 'nonbillable' && e.billable) return false;
     return true;
   });
 
   const totalSec = filtered.reduce((a, e) => a + e.duration_seconds, 0);
-  const billSec = filtered.filter(e => e.billable).reduce((a, e) => a + e.duration_seconds, 0);
-  const nonBillSec = totalSec - billSec;
-  const amount = filtered.reduce((a, e) => {
-    if (!e.billable) return a;
-    const p = byId[e.project_id];
-    return a + entriesAmount([e], clientById[p?.client_id]);
-  }, 0);
+  const amount = filtered.reduce((a, e) => a + (e.billable ? entryAmount(e, clientById[e.client_id]) : 0), 0);
 
-  const group = (keyFn, labelFn) => {
-    const m = {};
+  const catName = (e) => e.category_id ? (catById[e.category_id]?.name || '—') : '—';
+  const clientName = (e) => clientById[e.client_id]?.name || '—';
+  const taskTitle = (e) => e.task_id ? (taskById[e.task_id]?.title || '—') : '';
+
+  const clientLabel = clientId ? (clientById[clientId]?.name || 'client') : 'all-clients';
+  const rangeLabel = `${from}_to_${to}`;
+
+  const exportCsv = () => {
+    const head = ['Date', 'Client', 'Category', ...(showPerson ? ['Person'] : []), 'Task', 'Note', 'Billable', 'Hours', 'Amount (EUR)'];
+    const rows = [head];
     for (const e of filtered) {
-      const k = keyFn(e);
-      if (!k) continue;
-      if (!m[k]) m[k] = { label: labelFn(k), billableSec: 0, nonBillableSec: 0 };
-      m[k][e.billable ? 'billableSec' : 'nonBillableSec'] += e.duration_seconds;
+      const amt = e.billable ? Math.round(entryAmount(e, clientById[e.client_id]) * 100) / 100 : '';
+      rows.push([
+        dateKey(e.started_at), clientName(e), catName(e),
+        ...(showPerson ? [staffName(staffById[e.person_id])] : []),
+        taskTitle(e), e.notes || '', e.billable ? 'yes' : 'no',
+        secToDec(e.duration_seconds), amt
+      ]);
     }
-    return Object.values(m).sort((a, b) => (b.billableSec + b.nonBillableSec) - (a.billableSec + a.nonBillableSec));
+    rows.push([]);
+    rows.push(['Total hours', secToDec(totalSec)]);
+    rows.push(['Billable amount (EUR)', Math.round(amount * 100) / 100]);
+    downloadCsv(buildCsv(rows), `${safeFileName(clientLabel)}_${rangeLabel}_time.csv`);
   };
-
-  const byClient = group(
-    e => byId[e.project_id]?.client_id,
-    k => clientById[k]?.name || 'Unknown client'
-  );
-  const byType = group(
-    e => byId[e.project_id]?.type || 'Untyped',
-    k => k
-  );
 
   return (
     <>
       {err && <div className="auth-err" style={{ marginBottom: 14 }}>{err}</div>}
 
-      <div className="card">
+      <div className="card no-print">
         <div className="tt-filters">
           <div className="fld"><label className="lab">From</label>
             <input className="ti" type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
@@ -114,11 +94,18 @@ export default function TimeReports({ projects, clients }) {
               <option value="">All clients</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select></div>
-          <div className="fld"><label className="lab">Work type</label>
-            <select className="sel" value={workType} onChange={e => setWorkType(e.target.value)}>
-              <option value="">All types</option>
-              {types.map(t => <option key={t} value={t}>{t}</option>)}
+          <div className="fld"><label className="lab">Category</label>
+            <select className="sel" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+              <option value="">All categories</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select></div>
+          {showPerson && (
+            <div className="fld"><label className="lab">Person</label>
+              <select className="sel" value={personId} onChange={e => setPersonId(e.target.value)}>
+                <option value="">Everyone</option>
+                {staff.map(s => <option key={s.id} value={s.id}>{staffName(s)}</option>)}
+              </select></div>
+          )}
           <div className="fld"><label className="lab">Billable</label>
             <select className="sel" value={billable} onChange={e => setBillable(e.target.value)}>
               <option value="all">All</option>
@@ -126,21 +113,66 @@ export default function TimeReports({ projects, clients }) {
               <option value="nonbillable">Non-billable only</option>
             </select></div>
         </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+          <button className="btn sm" onClick={() => window.print()}>Print / Save as PDF</button>
+          <button className="btn sm gh" onClick={exportCsv} disabled={filtered.length === 0}>Export CSV</button>
+        </div>
       </div>
 
-      <div className="tt-kpis">
-        <div className="card tt-kpi"><div className="tt-kpi-label">Total</div><div className="tt-kpi-value">{secToHM(totalSec)}</div><div className="meta">{secToDec(totalSec)} h</div></div>
-        <div className="card tt-kpi"><div className="tt-kpi-label">Billable</div><div className="tt-kpi-value">{secToHM(billSec)}</div><div className="meta">{totalSec ? Math.round(billSec / totalSec * 100) : 0}%</div></div>
-        <div className="card tt-kpi"><div className="tt-kpi-label">Non-billable</div><div className="tt-kpi-value">{secToHM(nonBillSec)}</div><div className="meta">{totalSec ? Math.round(nonBillSec / totalSec * 100) : 0}%</div></div>
-        <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div><div className="tt-kpi-value">{fmtMoney(amount)}</div><div className="meta">frozen entry rates</div></div>
-      </div>
+      {/* Printable area */}
+      <div className="print-area">
+        <div className="print-head">
+          <h2>Time report</h2>
+          <div className="print-meta">
+            {from} to {to}
+            {clientId ? ` · ${clientById[clientId]?.name}` : ' · all clients'}
+            {personId && showPerson ? ` · ${staffName(staffById[personId])}` : ''}
+          </div>
+        </div>
 
-      <div className="grid2" style={{ marginTop: 14, alignItems: 'start' }}>
-        <BarBlock title="Time by client" rows={byClient} />
-        <BarBlock title="Time by work type" rows={byType} />
-      </div>
-      <div className="sub" style={{ marginTop: 10 }}>
-        <span className="tt-legend bill" /> billable&nbsp;&nbsp;<span className="tt-legend nonbill" /> non-billable
+        <div className="tt-kpis no-print" style={{ marginBottom: 16 }}>
+          <div className="card tt-kpi"><div className="tt-kpi-label">Entries</div><div className="tt-kpi-value">{filtered.length}</div></div>
+          <div className="card tt-kpi"><div className="tt-kpi-label">Total</div><div className="tt-kpi-value">{secToHM(totalSec)}</div><div className="meta">{secToDec(totalSec)} h</div></div>
+          <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div><div className="tt-kpi-value">{fmtMoney(amount)}</div></div>
+        </div>
+
+        <div className="card report-card" style={{ padding: 0 }}>
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Client</th>
+                <th>Category</th>
+                {showPerson && <th>Person</th>}
+                <th>Task</th>
+                <th>Note</th>
+                <th className="num">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={showPerson ? 7 : 6} className="empty">No entries match these filters.</td></tr>
+              )}
+              {filtered.map(e => (
+                <tr key={e.id}>
+                  <td className="nowrap">{dateKey(e.started_at)}</td>
+                  <td>{clientName(e)}</td>
+                  <td>{catName(e)}{!e.billable && <span className="report-nb"> · non-billable</span>}</td>
+                  {showPerson && <td>{staffName(staffById[e.person_id])}</td>}
+                  <td>{taskTitle(e) || <span className="dim">—</span>}</td>
+                  <td>{e.notes || <span className="dim">—</span>}</td>
+                  <td className="num">{secToHM(e.duration_seconds)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={showPerson ? 6 : 5} className="num strong">Total</td>
+                <td className="num strong">{secToHM(totalSec)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </>
   );
