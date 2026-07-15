@@ -12,6 +12,12 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function addDaysISO(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function endDate(p) {
   const d = new Date(p.start_date + 'T00:00:00');
   d.setDate(d.getDate() + Math.round((+p.target_duration_weeks || 0) * 7));
@@ -32,23 +38,58 @@ const EMPTY_FORM = { client_id: '', name: '', start_date: todayISO(), target_dur
 export default function TaskProjects({ embedded }) {
   const [clients, setClients] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [edit, setEdit] = useState({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [ok, setOk] = useState('');
+
+  const flash = (m) => { setOk(m); setTimeout(() => setOk(''), 2600); };
 
   const load = async () => {
     setErr('');
-    const [{ data: cs, error: e1 }, { data: ps, error: e2 }] = await Promise.all([
+    const [{ data: cs, error: e1 }, { data: ps, error: e2 }, { data: tpls }] = await Promise.all([
       supabase.from('clients').select('id, name, status').order('name'),
-      supabase.from('task_projects').select('*').order('start_date', { ascending: false })
+      supabase.from('task_projects').select('*').order('start_date', { ascending: false }),
+      supabase.from('task_templates').select('id, name').order('name')
     ]);
     if (e1 || e2) { setErr((e1 || e2).message); setClients(cs || []); return; }
     setClients(cs || []);
     setProjects(ps || []);
+    setTemplates(tpls || []);
   };
   useEffect(() => { load(); }, []);
+
+  // The template is a stamp: generate real, independent tasks under the
+  // project. due_date = project start + offset_days + duration_days.
+  const applyTemplate = async (project, templateId) => {
+    if (!templateId) return;
+    setErr('');
+    const tpl = templates.find(t => t.id === templateId);
+    const { data: items, error } = await supabase.from('task_template_items')
+      .select('*').eq('template_id', templateId)
+      .order('sort_order').order('offset_days');
+    if (error) { setErr(error.message); return; }
+    if (!items || items.length === 0) { setErr(`"${tpl?.name}" has no tasks in it yet. Add some on the Templates tab.`); return; }
+    if (!window.confirm(`Create ${items.length} tasks from "${tpl?.name}" for "${project.name}"?`)) return;
+    setBusy(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const rows = items.map(it => ({
+      client_id: project.client_id,
+      project_id: project.id,
+      title: it.title,
+      description: it.description,
+      priority: it.priority,
+      due_date: addDaysISO(project.start_date, (it.offset_days || 0) + (it.duration_days || 1)),
+      created_by: userData?.user?.id
+    }));
+    const { error: insErr } = await supabase.from('tasks').insert(rows);
+    setBusy(false);
+    if (insErr) { setErr(insErr.message); return; }
+    flash(`${rows.length} tasks created for ${project.name}. They are in the queue, unassigned.`);
+  };
 
   const F = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -112,6 +153,7 @@ export default function TaskProjects({ embedded }) {
   const body = (
     <>
       {err && <div className="auth-err" style={{ marginBottom: 14 }}>{err}</div>}
+      {ok && <div className="auth-ok" style={{ marginBottom: 14 }}>{ok}</div>}
 
       <form className="card spine" onSubmit={create}>
         <h3>New project</h3>
@@ -175,6 +217,13 @@ export default function TaskProjects({ embedded }) {
                         {fmtDate(p.start_date)} to {fmtDate(endDate(p))} | {weeksLabel(p.target_duration_weeks)}
                       </div>
                     </div>
+                    {templates.length > 0 && (
+                      <select className="sel tm-row-sel" value="" title="Generate tasks from a template" disabled={busy}
+                        onChange={e => applyTemplate(p, e.target.value)}>
+                        <option value="">Apply template…</option>
+                        {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    )}
                     <button
                       className={'chip tm-pay ' + (p.payment_status === 'paid' ? 'tm-paid' : 'tm-unpaid')}
                       title="Click to flip between paid and unpaid"

@@ -503,3 +503,19 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .tm-time-row .sel{width:auto;min-width:150px}
 .tm-time-row .ti{flex:1;min-width:100px}
 .tm-dur{flex:0 0 76px!important;text-align:center}
+
+/* ===== Task management phase 3 (templates) ===== */
+.tm-tpl-form{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.tm-tpl-form .ti{flex:1;min-width:200px}
+.tm-tpl-head{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer}
+.tm-tpl-head:hover{background:var(--bg)}
+.tm-tpl-chevron{color:var(--dim);font-size:.8rem}
+.tm-tpl-body{border-top:1px solid var(--line)}
+.tm-tpl-meta{display:grid;grid-template-columns:auto minmax(0,1fr) auto 100px;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--bg)}
+.tm-item-head{display:grid;grid-template-columns:minmax(0,1fr) 120px 76px 76px 108px;gap:10px;padding:10px 16px 6px;font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.tm-item-row{display:grid;grid-template-columns:minmax(0,1fr) 120px 76px 76px 108px;gap:10px;align-items:start;padding:10px 16px;border-bottom:1px solid var(--line)}
+.tm-item-row .ti,.tm-item-row .sel{padding:8px 10px;font-size:.86rem}
+.tm-item-desc{margin-top:6px;font-size:.8rem!important;color:var(--dim)}
+.tm-item-actions{display:flex;gap:4px}
+.tm-item-new{background:var(--bg);border-bottom:none}
+@media(max-width:800px){.tm-item-head{display:none}.tm-item-row{grid-template-columns:1fr 1fr}}

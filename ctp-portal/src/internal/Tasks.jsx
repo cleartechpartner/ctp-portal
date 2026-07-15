@@ -6,6 +6,7 @@ import {
   setAssignees, initials, staffName, isOverdue, fmtDue
 } from '../lib/tasks';
 import TaskProjects from './TaskProjects';
+import TaskTemplates from './TaskTemplates';
 
 function todayISO() {
   const d = new Date();
@@ -16,7 +17,9 @@ const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 
 export default function Tasks({ profile }) {
   const location = useLocation();
-  const tab = location.hash === '#projects' ? 'projects' : 'queue';
+  const tab = location.hash === '#projects' ? 'projects'
+    : location.hash === '#templates' ? 'templates'
+    : 'queue';
 
   return (
     <div className="page">
@@ -29,8 +32,11 @@ export default function Tasks({ profile }) {
       <div className="tt-tabs">
         <a href="/tasks" className={'tt-tab' + (tab === 'queue' ? ' on' : '')}>Tasks</a>
         <a href="/tasks#projects" className={'tt-tab' + (tab === 'projects' ? ' on' : '')}>Projects</a>
+        <a href="/tasks#templates" className={'tt-tab' + (tab === 'templates' ? ' on' : '')}>Templates</a>
       </div>
-      {tab === 'queue' ? <TaskQueue profile={profile} /> : <TaskProjects embedded />}
+      {tab === 'queue' && <TaskQueue profile={profile} />}
+      {tab === 'projects' && <TaskProjects embedded />}
+      {tab === 'templates' && <TaskTemplates />}
     </div>
   );
 }
