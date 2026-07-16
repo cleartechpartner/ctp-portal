@@ -98,8 +98,12 @@ async function signApi(action, payload) {
   return d;
 }
 
-export default function ProposalSignView() {
-  const { token } = useParams();
+// The token normally arrives as a prop from the App.jsx public gate (which
+// runs before any session handling); useParams is only the fallback. This
+// page must never check for or require a portal session.
+export default function ProposalSignView({ token: tokenProp }) {
+  const { token: tokenParam } = useParams();
+  const token = tokenProp || tokenParam;
   const [data, setData] = useState(null);
   const [screen, setScreen] = useState('loading'); // loading | error | completed | review | done
   const [err, setErr] = useState('');

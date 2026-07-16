@@ -7,7 +7,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.CLIENT_FROM_EMAIL || 'Clear Tech Partner <client@cleartechpartner.com>';
-const SITE = process.env.SITE_URL || 'https://portal.cleartechpartner.com';
+// Trailing slash stripped: SITE + '/sign/' + token must never produce
+// //sign/TOKEN, which the app's public route gate would not recognise.
+const SITE = (process.env.SITE_URL || 'https://portal.cleartechpartner.com').replace(/\/+$/, '');
 
 const TOKEN_DAYS = 30;
 
