@@ -101,8 +101,18 @@ export function capState(entries, client, capType, capValue) {
   };
 }
 
-export function fmtMoney(n) {
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'EUR' }).format(n || 0);
+export function fmtMoney(n, currency = 'EUR') {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(n || 0);
+}
+
+// Format a { EUR: 120, USD: 80 } map as "€120.00 + $80.00". Amounts across
+// clients can span currencies, so we never collapse them into one total.
+export function fmtAmountsByCurrency(map) {
+  const parts = Object.entries(map)
+    .filter(([, v]) => v)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([c, v]) => fmtMoney(v, c));
+  return parts.length ? parts.join(' + ') : fmtMoney(0);
 }
 
 export function projectLabel(p) {

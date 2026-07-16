@@ -4,6 +4,7 @@ import {
   startOfWeek, addDays, weekDays, dateKey, secToHM, secToHMS, secToDec,
   parseDuration
 } from '../lib/time';
+import { quoteForDate } from '../lib/quotes';
 
 function rateOf(client) {
   return client?.hourly_rate == null ? null : +client.hourly_rate;
@@ -364,9 +365,16 @@ export default function Timesheet({ clients, categories, tasks }) {
             {selectedLabel} · total {secToHM(daySec(anchor))}
           </div>
           <div className="card" style={{ padding: 0 }}>
-            {dayEntries(anchor).length === 0 && (
-              <div className="empty">Nothing tracked this day. Start a timer or log time.</div>
-            )}
+            {dayEntries(anchor).length === 0 && (() => {
+              const q = quoteForDate(dateKey(anchor));
+              return (
+                <div className="ts-empty-quote">
+                  <p className="ts-quote-text">“{q.text}”</p>
+                  <p className="ts-quote-author">— {q.author}</p>
+                  <p className="ts-quote-hint">Nothing tracked this day. Start a timer or log time.</p>
+                </div>
+              );
+            })()}
             {dayEntries(anchor).map(en => {
               const { cName, catName } = entryLabel(en);
               const task = en.task_id ? taskById[en.task_id] : null;

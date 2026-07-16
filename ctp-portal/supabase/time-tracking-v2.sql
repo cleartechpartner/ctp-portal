@@ -74,6 +74,12 @@ update public.time_entries e
 create index if not exists time_entries_client_idx on public.time_entries(client_id);
 create index if not exists time_entries_category_idx on public.time_entries(category_id);
 
+-- ---------- PER-CLIENT CURRENCY ----------
+-- Rates are billed per client; some clients (e.g. Backpocket CPA) are in USD,
+-- not EUR. Reports/summary render the symbol for the client's own currency.
+alter table public.clients
+  add column if not exists currency text not null default 'EUR' check (currency in ('EUR','USD'));
+
 -- ---------- AVATARS (account area + settings panel) ----------
 alter table public.profiles
   add column if not exists avatar_url text;
