@@ -20,6 +20,9 @@ import Sign from './internal/Sign';
 import SignPrepare from './internal/SignPrepare';
 import SignDetail from './internal/SignDetail';
 import SignerView from './sign/SignerView';
+import Proposals from './internal/Proposals';
+import ProposalEditor from './internal/ProposalEditor';
+import ProposalSignView from './sign/ProposalSignView';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading
@@ -81,6 +84,20 @@ export default function App() {
     );
   }
 
+  // Public proposal signing route. Proposal tokens are 64 hex chars, so this
+  // never collides with the internal /sign/new or /sign/:uuid routes (UUIDs
+  // contain dashes).
+  if (/^\/sign\/[0-9a-f]{40,}$/i.test(window.location.pathname)) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/sign/:token" element={<ProposalSignView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   if (session === undefined || (session && !profile)) {
     return <div className="center"><div className="sp" /></div>;
   }
@@ -109,6 +126,9 @@ export default function App() {
               <Route path="/sign" element={<Sign />} />
               <Route path="/sign/new" element={<SignPrepare />} />
               <Route path="/sign/:id" element={<SignDetail />} />
+              <Route path="/proposals" element={<Proposals />} />
+              <Route path="/proposals/new" element={<ProposalEditor />} />
+              <Route path="/proposals/:id" element={<ProposalEditor />} />
               <Route path="/tasks" element={<Tasks profile={profile} />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />

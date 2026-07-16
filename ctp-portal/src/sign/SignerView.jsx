@@ -110,8 +110,9 @@ function fieldPrompt(t, f) {
 }
 
 // ---------- signature adoption modal ----------
+// Exported: the proposal signing page (ProposalSignView) reuses it.
 
-function AdoptModal({ t, signerName, needInitials, onAdopt, onClose }) {
+export function AdoptModal({ t, signerName, needInitials, onAdopt, onClose }) {
   const [mode, setMode] = useState('draw');
   const [typed, setTyped] = useState(signerName || '');
   const [hasInk, setHasInk] = useState(false);

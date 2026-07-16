@@ -167,6 +167,7 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .co-card.st-contract{border-top-color:#2196F3}
 .co-card.st-paused{border-top-color:#9ca3af}
 .co-card.st-archived{border-top-color:#6b7280}
+.co-card.st-prospect{border-top-color:#7C3AED}
 
 .co-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .co-card-name{font-size:.98rem;font-weight:600;line-height:1.3}
@@ -178,6 +179,7 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .co-pill.st-contract{background:#f0f5ff;color:#0048d6;border:1px solid #c8d9ff}
 .co-pill.st-paused{background:var(--bg);color:var(--dim);border:1px solid var(--line)}
 .co-pill.st-archived{background:var(--bg);color:var(--dim);border:1px solid var(--line)}
+.co-pill.st-prospect{background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe}
 
 .co-tags{display:flex;gap:5px;flex-wrap:wrap}
 .co-tag{font-size:.7rem;color:var(--dim);background:var(--bg);padding:2px 9px;border-radius:99px}
@@ -261,6 +263,55 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .filter-chip.on{background:var(--blue-soft);color:var(--blue);border-color:var(--blue)}
 .filter-count{font-size:.7rem;background:rgba(0,0,0,.06);color:inherit;padding:1px 7px;border-radius:99px;font-weight:600}
 .filter-chip.on .filter-count{background:var(--blue);color:#fff}
+
+/* ===== Proposals: public signing view (HTML mirror of the PDF) ===== */
+.pv-doc{max-width:760px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,24,38,.07)}
+.pv-band{background:var(--grad);color:#fff;padding:22px 34px;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.pv-brand{font-size:1.35rem;font-weight:700;letter-spacing:-.01em}
+.pv-contact{font-size:.72rem;opacity:.85;margin-top:4px}
+.pv-doclabel{font-size:1.4rem;font-weight:800;opacity:.55;letter-spacing:.06em}
+.pv-body{padding:26px 34px 34px}
+.pv-meta{display:flex;justify-content:space-between;gap:16px;font-size:.85rem;line-height:1.7;flex-wrap:wrap}
+.pv-meta-right{text-align:right}
+.pv-meta-label{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--dim)}
+.pv-rule{height:3px;background:var(--ink);margin:16px 0 20px}
+.pv-title{font-size:1.15rem;font-weight:700;margin:0 0 10px}
+.pv-summary{font-size:.88rem;line-height:1.65;color:#33404f;margin:0 0 20px}
+.pv-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:20px}
+.pv-table th{background:#161c26;color:#fff;text-align:left;padding:8px 10px;font-size:.74rem;letter-spacing:.03em}
+.pv-table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.pv-table tbody tr:nth-child(even){background:#f7f8fa}
+.pv-num{text-align:right;white-space:nowrap}
+.pv-totals{max-width:300px;margin-left:auto;display:flex;flex-direction:column;gap:7px;font-size:.86rem;margin-bottom:22px}
+.pv-totals>div{display:flex;justify-content:space-between;gap:18px;color:var(--dim)}
+.pv-totals>div b{color:var(--ink)}
+.pv-total-due{border-top:2px solid var(--ink);padding-top:9px;margin-top:3px}
+.pv-total-due span{font-weight:700;color:var(--ink)!important}
+.pv-total-due b{font-size:1.05rem}
+.pv-retainer{background:#f2f4f6;border-radius:10px;padding:14px 18px;font-size:.84rem;margin-bottom:22px}
+.pv-retainer p{margin:8px 0 0;color:#33404f;line-height:1.6}
+.pv-agreement{font-size:.86rem}
+.pv-agreement p{margin:6px 0 0;color:#33404f;line-height:1.6}
+.pv-signcard{max-width:760px}
+.pv-sig-preview{margin-top:12px;display:flex;align-items:center;gap:14px}
+.pv-sig-preview img{max-height:64px;max-width:260px;border:1px dashed var(--line);border-radius:8px;padding:6px;background:#fff}
+.pv-footer{max-width:760px;margin:20px auto 0;font-size:.72rem;color:var(--dim);text-align:center}
+@media(max-width:640px){.pv-band{padding:16px 20px}.pv-body{padding:20px;overflow-x:auto}.pv-doclabel{display:none}}
+
+/* ===== Proposals ===== */
+.prop-phase-row{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.prop-phase-row:last-child{border-bottom:none}
+.prop-phase-num{width:26px;height:26px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:600;color:var(--dim);flex-shrink:0;margin-top:6px}
+.prop-phase-fields{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.prop-phase-price{width:130px;flex-shrink:0}
+.prop-phase-actions{display:flex;gap:4px;flex-shrink:0}
+@media(max-width:700px){.prop-phase-row{flex-wrap:wrap}.prop-phase-price{width:100%}}
+.prop-totals{max-width:340px;margin-left:auto;display:flex;flex-direction:column;gap:8px}
+.prop-totals>div{display:flex;justify-content:space-between;gap:20px;font-size:.9rem;color:var(--dim)}
+.prop-totals>div b{color:var(--ink);font-weight:600}
+.prop-totals-due{border-top:2px solid var(--ink);padding-top:10px;margin-top:4px;font-size:1rem!important}
+.prop-totals-due span{font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;font-size:.82rem}
+.prop-totals-due b{font-size:1.1rem}
 
 /* Client-side report attachment download card */
 .report-attach{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:background .12s,border-color .12s}
