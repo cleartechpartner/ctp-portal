@@ -31,7 +31,7 @@ export default function Time() {
         .select('id, title, type, status, client_id, time_cap_hours, time_cap_budget, clients(id, name, status, hourly_rate, time_cap_type, time_cap_value)')
         .order('title'),
       supabase.from('clients')
-        .select('id, name, status, hourly_rate, time_cap_type, time_cap_value')
+        .select('id, name, status, hourly_rate, currency, time_cap_type, time_cap_value')
         .order('name'),
       supabase.from('tasks').select('id, title, client_id, status').order('created_at', { ascending: false })
     ]);
@@ -54,7 +54,7 @@ export default function Time() {
     { id: 'timesheet', href: '/time', label: 'Timesheet' },
     { id: 'reports', href: '/time#reports', label: 'Detailed report' },
     { id: 'summary', href: '/time#summary', label: 'Summary' },
-    { id: 'clients', href: '/time#clients', label: 'Clients & caps' }
+    { id: 'clients', href: '/time#clients', label: 'Settings & budget' }
   ];
 
   return (
@@ -62,7 +62,7 @@ export default function Time() {
       <div className="co-header">
         <div>
           <h1>Time</h1>
-          <p className="sub">Track hours against a client and a category. Caps warn, they never block.</p>
+          <p className="sub">Track your hours against a client and a category.</p>
         </div>
       </div>
 

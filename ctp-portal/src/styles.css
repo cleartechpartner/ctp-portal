@@ -639,3 +639,19 @@ h1,h2,h3,.display{font-family:var(--font-display)}
   body{background:#fff}
   .print-area{display:block}
 }
+
+/* Summary pie charts */
+.pie-wrap{display:flex;align-items:center;gap:22px;margin-top:14px;flex-wrap:wrap}
+.pie-svg{width:150px;height:150px;flex-shrink:0}
+.pie-legend{flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px}
+.pie-legend-row{display:flex;align-items:center;gap:8px;font-size:.86rem}
+.pie-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+.pie-legend-label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pie-legend-val{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.pie-legend-pct{font-variant-numeric:tabular-nums;color:var(--dim);width:38px;text-align:right}
+
+/* Empty-day motivational quote */
+.ts-empty-quote{padding:40px 28px;text-align:center;max-width:560px;margin:0 auto}
+.ts-quote-text{font-family:var(--font-display);font-size:1.12rem;line-height:1.5;font-weight:600;color:var(--ink)}
+.ts-quote-author{color:var(--dim);font-size:.88rem;margin-top:10px}
+.ts-quote-hint{color:var(--dim);font-size:.82rem;margin-top:20px;opacity:.75}

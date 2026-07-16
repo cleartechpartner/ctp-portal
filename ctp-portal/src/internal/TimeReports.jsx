@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { staffName } from '../lib/tasks';
 import {
-  dateKey, secToHM, secToDec, entryAmount, fmtMoney,
+  dateKey, secToHM, secToDec, entryAmount, fmtAmountsByCurrency,
   buildCsv, downloadCsv, safeFileName
 } from '../lib/time';
 
@@ -52,7 +52,14 @@ export default function TimeReports({ clients, categories, staff, tasks }) {
   });
 
   const totalSec = filtered.reduce((a, e) => a + e.duration_seconds, 0);
-  const amount = filtered.reduce((a, e) => a + (e.billable ? entryAmount(e, clientById[e.client_id]) : 0), 0);
+  // Amounts can span currencies (e.g. a USD client alongside EUR ones), so we
+  // total per currency instead of collapsing into a single figure.
+  const amountByCurrency = filtered.reduce((m, e) => {
+    if (!e.billable) return m;
+    const cur = clientById[e.client_id]?.currency || 'EUR';
+    m[cur] = (m[cur] || 0) + entryAmount(e, clientById[e.client_id]);
+    return m;
+  }, {});
 
   const catName = (e) => e.category_id ? (catById[e.category_id]?.name || '—') : '—';
   const clientName = (e) => clientById[e.client_id]?.name || '—';
@@ -62,20 +69,23 @@ export default function TimeReports({ clients, categories, staff, tasks }) {
   const rangeLabel = `${from}_to_${to}`;
 
   const exportCsv = () => {
-    const head = ['Date', 'Client', 'Category', ...(showPerson ? ['Person'] : []), 'Task', 'Note', 'Billable', 'Hours', 'Amount (EUR)'];
+    const head = ['Date', 'Client', 'Category', ...(showPerson ? ['Person'] : []), 'Task', 'Note', 'Billable', 'Hours', 'Currency', 'Amount'];
     const rows = [head];
     for (const e of filtered) {
+      const cur = clientById[e.client_id]?.currency || 'EUR';
       const amt = e.billable ? Math.round(entryAmount(e, clientById[e.client_id]) * 100) / 100 : '';
       rows.push([
         dateKey(e.started_at), clientName(e), catName(e),
         ...(showPerson ? [staffName(staffById[e.person_id])] : []),
         taskTitle(e), e.notes || '', e.billable ? 'yes' : 'no',
-        secToDec(e.duration_seconds), amt
+        secToDec(e.duration_seconds), cur, amt
       ]);
     }
     rows.push([]);
     rows.push(['Total hours', secToDec(totalSec)]);
-    rows.push(['Billable amount (EUR)', Math.round(amount * 100) / 100]);
+    for (const [cur, v] of Object.entries(amountByCurrency)) {
+      rows.push([`Billable amount (${cur})`, Math.round(v * 100) / 100]);
+    }
     downloadCsv(buildCsv(rows), `${safeFileName(clientLabel)}_${rangeLabel}_time.csv`);
   };
 
@@ -133,7 +143,7 @@ export default function TimeReports({ clients, categories, staff, tasks }) {
         <div className="tt-kpis no-print" style={{ marginBottom: 16 }}>
           <div className="card tt-kpi"><div className="tt-kpi-label">Entries</div><div className="tt-kpi-value">{filtered.length}</div></div>
           <div className="card tt-kpi"><div className="tt-kpi-label">Total</div><div className="tt-kpi-value">{secToHM(totalSec)}</div><div className="meta">{secToDec(totalSec)} h</div></div>
-          <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div><div className="tt-kpi-value">{fmtMoney(amount)}</div></div>
+          <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div><div className="tt-kpi-value">{fmtAmountsByCurrency(amountByCurrency)}</div></div>
         </div>
 
         <div className="card report-card" style={{ padding: 0 }}>
