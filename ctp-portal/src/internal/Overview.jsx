@@ -4,11 +4,9 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList,
   PieChart, Pie
 } from 'recharts';
-import html2canvas from 'html2canvas-pro';
 import { supabase } from '../lib/supabase';
 import { PROPOSAL_STATUS } from '../lib/proposals';
 import { BOARD_STAGES, stageOf, timeAgoShort } from '../lib/prospects';
-import { LOGO } from '../lib/logo';
 import Avatar from '../components/Avatar';
 
 // Every figure on this page is computed from live rows the signed-in user can
@@ -113,75 +111,12 @@ export default function Overview() {
     return () => { dead = true; };
   }, []);
 
-  // Print-to-PDF snapshot: html2canvas captures the whole dashboard, the
-  // capture goes into a print-only container, and the print stylesheet shows
-  // only the branded header plus that image. The page is pinned to the
-  // 1200px desktop layout for the capture (the ov-capture class also outranks
-  // the responsive stacking rules, since those key on viewport width), so
-  // the PDF always shows the full-width desktop grid no matter the screen.
-  const [exporting, setExporting] = useState(false);
-  const exportPdf = async () => {
-    const page = document.querySelector('.page');
-    if (!page || exporting) return;
-    setExporting(true);
-    let shot = null;
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
-      page.classList.remove('ov-capture');
-      document.body.classList.remove('ov-capture-print');
-      if (shot) shot.remove();
-      window.removeEventListener('afterprint', cleanup);
-      setExporting(false);
-    };
-    try {
-      page.classList.add('ov-capture');
-      // ResponsiveContainer needs a beat to re-render every chart at the
-      // forced 1200px width before the snapshot is taken.
-      await new Promise(res => setTimeout(res, 500));
-      const canvas = await html2canvas(page, {
-        scale: 2,
-        useCORS: true,
-        windowWidth: 1240,
-        backgroundColor: getComputedStyle(document.body).backgroundColor,
-        ignoreElements: (el) => !!el.classList && (el.classList.contains('co-actions') || el.classList.contains('ov-print-shot'))
-      });
-      page.classList.remove('ov-capture');
-      const img = new Image();
-      img.src = canvas.toDataURL('image/png');
-      shot = document.createElement('div');
-      shot.className = 'ov-print-shot';
-      shot.appendChild(img);
-      page.appendChild(shot);
-      await new Promise(res => { img.onload = res; img.onerror = res; });
-      document.body.classList.add('ov-capture-print');
-      window.addEventListener('afterprint', cleanup);
-      window.print();
-      setTimeout(cleanup, 2000);
-    } catch {
-      cleanup();
-    }
-  };
-
   return (
     <div className="page">
-      <div className="ov-print-head" aria-hidden="true">
-        <img src={LOGO} alt="" />
-        <div>
-          <b>Clear Tech Partner</b>
-          <span>Overview | {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-        </div>
-      </div>
       <div className="co-header">
         <div>
           <h1>Overview</h1>
           <p className="sub">The whole business at a glance.</p>
-        </div>
-        <div className="co-actions">
-          <button className="btn sm gh" onClick={exportPdf} disabled={!data || exporting}>
-            {exporting ? 'Preparing…' : 'Export PDF'}
-          </button>
         </div>
       </div>
 
