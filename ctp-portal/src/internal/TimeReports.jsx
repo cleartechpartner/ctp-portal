@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { staffName } from '../lib/tasks';
 import {
-  dateKey, secToHM, secToDec, entryAmount, fmtAmountsByCurrency,
+  dateKey, secToHM, secToDec, entryAmount, fmtAmountLines,
   buildCsv, downloadCsv, safeFileName
 } from '../lib/time';
 
@@ -123,7 +123,7 @@ export default function TimeReports({ clients, categories, staff, tasks }) {
               <option value="nonbillable">Non-billable only</option>
             </select></div>
         </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <button className="btn sm" onClick={() => window.print()}>Print / Save as PDF</button>
           <button className="btn sm gh" onClick={exportCsv} disabled={filtered.length === 0}>Export CSV</button>
         </div>
@@ -140,10 +140,11 @@ export default function TimeReports({ clients, categories, staff, tasks }) {
           </div>
         </div>
 
-        <div className="tt-kpis no-print" style={{ marginBottom: 16 }}>
+        <div className="tt-kpis no-print" style={{ marginBottom: 20 }}>
           <div className="card tt-kpi"><div className="tt-kpi-label">Entries</div><div className="tt-kpi-value">{filtered.length}</div></div>
           <div className="card tt-kpi"><div className="tt-kpi-label">Total</div><div className="tt-kpi-value">{secToHM(totalSec)}</div><div className="meta">{secToDec(totalSec)} h</div></div>
-          <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div><div className="tt-kpi-value">{fmtAmountsByCurrency(amountByCurrency)}</div></div>
+          <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div>
+            <div className="tt-kpi-value tt-kpi-stack">{fmtAmountLines(amountByCurrency).map(l => <div key={l}>{l}</div>)}</div></div>
         </div>
 
         <div className="card report-card" style={{ padding: 0 }}>

@@ -23,7 +23,7 @@ export function statusPatch(status) {
 export async function fetchStaff() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, email, full_name, is_admin')
+    .select('id, email, full_name, is_admin, avatar_url')
     .ilike('email', '%@cleartechpartner.com')
     .order('email');
   if (error) throw new Error(error.message);

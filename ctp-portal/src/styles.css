@@ -939,11 +939,50 @@ h1,h2,h3,.display{font-family:var(--font-display)}
 .ov-feed{list-style:none;margin-top:6px}
 .ov-feed li{border-top:1px solid var(--line)}
 .ov-feed li:first-child{border-top:none}
-.ov-feed a{display:flex;gap:12px;align-items:baseline;justify-content:space-between;padding:10px 2px;text-decoration:none;color:var(--ink)}
+.ov-feed a{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:13px 4px;text-decoration:none;color:var(--ink)}
 .ov-feed a:hover{background:var(--bg)}
-.ov-feed .what{font-size:.9rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-feed .what{flex:1;font-size:.9rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ov-feed .what b{font-weight:600}
 .ov-feed .when{color:var(--dim);font-size:.78rem;flex-shrink:0}
 @media(max-width:1100px){.ov-stats{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.ov-row.r2,.ov-row.r3,.ov-row.r4{grid-template-columns:1fr}}
 @media(max-width:560px){.ov-stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== Polish pass: avatars ===== */
+img.tm-avatar{object-fit:cover;background:var(--bg)}
+.pr-tl-face{position:absolute;left:-23px;top:0;width:19px;height:19px;border-radius:50%;object-fit:cover;border:2px solid var(--panel);background:var(--bg)}
+.pr-tl.has-face::before{display:none}
+
+/* ===== Polish pass: Overview print (Export PDF) ===== */
+.ov-print-head{display:none}
+@media print{
+  .ov-print-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .ov-print-head img{width:36px;height:36px}
+  .ov-print-head b{font-family:var(--font-display);display:block;font-size:1.05rem}
+  .ov-print-head span{color:var(--dim);font-size:.85rem}
+  .ov-stats{grid-template-columns:repeat(3,1fr)!important;gap:10px}
+  .ov-row.r2,.ov-row.r3,.ov-row.r4{grid-template-columns:1fr 1fr!important;gap:10px}
+  .ov-stat,.ov-row .card,.ov-feed li{break-inside:avoid}
+  .ov-stat{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ov-row .card,.page .card{border:1px solid var(--line)!important;padding:14px!important}
+  .recharts-wrapper,.recharts-wrapper svg{max-width:100%!important;height:auto!important}
+  .recharts-wrapper *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* ===== Polish pass: CRM filters + website link ===== */
+.pr-filter-btn{display:inline-flex;align-items:center;gap:6px}
+.pr-filter-panel{margin:10px 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);display:flex;flex-direction:column;gap:10px}
+.pr-weblink{color:var(--blue);text-decoration:none;word-break:break-all}
+.pr-weblink:hover{text-decoration:underline}
+.pr-weblink+.pr-inline{color:var(--dim);font-size:.85em;flex:0 0 auto}
+
+/* ===== Polish pass: Work section ===== */
+.tm-cal-day-list{padding:14px 16px}
+.tm-cal-dayrow{display:flex;align-items:center;gap:12px;padding:4px 0}
+.tm-cal-dayrow .tm-cal-task{flex:0 1 auto;font-size:.9rem;padding:8px 12px}
+.tm-cal-dayrow .sub{flex-shrink:0}
+.tm-cal-oneweek .tm-cal-cell{min-height:170px}
+.tt-filters{gap:14px}
+.tt-kpis{margin-top:18px;gap:14px}
+.tt-kpi{padding:18px 20px}
+.tt-kpi-stack div{line-height:1.3}

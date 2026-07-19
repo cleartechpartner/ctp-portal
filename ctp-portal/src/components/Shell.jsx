@@ -45,7 +45,6 @@ function ClientSwitch({ profile, clientLinks }) {
 export default function Shell({ profile, internal, clientLinks, children }) {
   const { t } = useLang();
   const location = useLocation();
-  const onStudio = location.pathname.startsWith('/studio');
   const isAlso = (n) => (n.also || []).some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || null);
@@ -84,12 +83,6 @@ export default function Shell({ profile, internal, clientLinks, children }) {
               {n.label}
             </NavLink>
           ))}
-          {internal && onStudio && (
-            <>
-              <a href="/studio#library" className={'nv sub-nv' + (location.hash === '#library' ? ' on' : '')}>Library</a>
-              <a href="/studio#settings" className={'nv sub-nv' + (location.hash === '#settings' ? ' on' : '')}>Settings</a>
-            </>
-          )}
         </nav>
         <div className="foot">
           <div className="account-row">

@@ -178,7 +178,7 @@ export default function ProspectDetailCard({ client, myProfile, staff, onChanged
     const [cRes, iRes, tRes] = await Promise.all([
       supabase.from('contacts').select('*').eq('client_id', client.id)
         .order('is_primary', { ascending: false }).order('created_at'),
-      supabase.from('interactions').select('*').eq('client_id', client.id)
+      supabase.from('interactions').select('*, creator:profiles!created_by(full_name, avatar_url)').eq('client_id', client.id)
         .order('occurred_at', { ascending: false }),
       supabase.from('tasks').select('id, title, due_date, status').eq('client_id', client.id)
         .eq('status', 'open').order('due_date', { ascending: true, nullsFirst: false }),
@@ -295,13 +295,19 @@ export default function ProspectDetailCard({ client, myProfile, staff, onChanged
         <div className="pr-fact">
           <div className="k">Website</div>
           <div className="v">
-            <InlineEdit
-              value={client.website}
-              display={website.replace(/^https?:\/\//i, '')}
-              onSave={v => saveField({ website: v })}
-            />
-            {website && (
-              <a href={websiteHref} target="_blank" rel="noreferrer" title="Open website" aria-label="Open website">&#8599;</a>
+            {website ? (
+              <>
+                <a className="pr-weblink" href={websiteHref} target="_blank" rel="noreferrer">
+                  {website.replace(/^https?:\/\//i, '')}
+                </a>
+                <InlineEdit
+                  value={client.website}
+                  display={<span title="Edit website" aria-label="Edit website">&#9998;</span>}
+                  onSave={v => saveField({ website: v })}
+                />
+              </>
+            ) : (
+              <InlineEdit value={client.website} onSave={v => saveField({ website: v })} />
             )}
           </div>
         </div>
@@ -534,8 +540,10 @@ function Timeline({ interactions, tasks, contacts }) {
       ))}
       {interactions.map(i => {
         const opens = i.metadata?.opens;
+        const face = i.creator?.avatar_url;
         return (
-          <div key={i.id} className={`pr-tl k-${i.kind}`}>
+          <div key={i.id} className={`pr-tl k-${i.kind}${face ? ' has-face' : ''}`}>
+            {face && <img className="pr-tl-face" src={face} alt={i.creator?.full_name || ''} title={i.creator?.full_name || ''} />}
             <div className="t">{i.title}</div>
             {i.body && <div className="b">{i.body}</div>}
             <div className="w">

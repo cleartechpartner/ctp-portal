@@ -7,6 +7,8 @@ import {
 import { supabase } from '../lib/supabase';
 import { PROPOSAL_STATUS } from '../lib/proposals';
 import { BOARD_STAGES, stageOf, timeAgoShort } from '../lib/prospects';
+import { LOGO } from '../lib/logo';
+import Avatar from '../components/Avatar';
 
 // Every figure on this page is computed from live rows the signed-in user can
 // already read under RLS. No money is rendered here: counts and hours only.
@@ -90,7 +92,7 @@ export default function Overview() {
         supabase.from('envelopes').select('id, status, sent_at, completed_at'),
         supabase.from('tasks').select('id, status, client_id'),
         supabase.from('time_entries').select('client_id, started_at, duration_seconds').gte('started_at', entriesSince.toISOString()),
-        supabase.from('interactions').select('id, client_id, kind, title, occurred_at, clients(name)').order('occurred_at', { ascending: false }).limit(10),
+        supabase.from('interactions').select('id, client_id, kind, title, occurred_at, clients(name), creator:profiles!created_by(full_name, email, avatar_url)').order('occurred_at', { ascending: false }).limit(10),
         supabase.from('studio_store').select('value').eq('key', 'ctp-lib').maybeSingle()
       ]);
       if (dead) return;
@@ -110,12 +112,34 @@ export default function Overview() {
     return () => { dead = true; };
   }, []);
 
+  // Print-to-PDF snapshot. Recharts SVGs get a viewBox first so they scale
+  // to the paper width instead of clipping.
+  const exportPdf = () => {
+    document.querySelectorAll('.recharts-wrapper svg').forEach(svg => {
+      if (!svg.getAttribute('viewBox')) {
+        const w = svg.getAttribute('width'), h = svg.getAttribute('height');
+        if (w && h) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      }
+    });
+    window.print();
+  };
+
   return (
     <div className="page">
+      <div className="ov-print-head" aria-hidden="true">
+        <img src={LOGO} alt="" />
+        <div>
+          <b>Clear Tech Partner</b>
+          <span>Overview | {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        </div>
+      </div>
       <div className="co-header">
         <div>
           <h1>Overview</h1>
           <p className="sub">The whole business at a glance.</p>
+        </div>
+        <div className="co-actions">
+          <button className="btn sm gh" onClick={exportPdf} disabled={!data}>Export PDF</button>
         </div>
       </div>
 
@@ -466,6 +490,7 @@ function FeedCard({ interactions }) {
           {interactions.map(i => (
             <li key={i.id}>
               <Link to={`/clients/${i.client_id}`}>
+                <Avatar profile={i.creator} size={26} />
                 <span className="what">
                   <b>{i.clients?.name || 'Client'}</b>
                   {' '}<span style={{ color: 'var(--dim)' }}>{KIND_LABEL[i.kind] || i.kind}</span>

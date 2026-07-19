@@ -32,6 +32,7 @@ export default function Prospects({ embedded = false, refreshKey = 0, initialSta
   const [prioFilter, setPrioFilter] = useState('all');
   // The Overview funnel deep-links here with ?stage=X via initialStage.
   const [stageFilter, setStageFilter] = useState(STAGES.includes(initialStage) ? initialStage : 'all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [assignedFilter, setAssignedFilter] = useState('all');
   const [independentOnly, setIndependentOnly] = useState(false);
   const [showLost, setShowLost] = useState(false);
@@ -121,40 +122,80 @@ export default function Prospects({ embedded = false, refreshKey = 0, initialSta
     <>
       {err && <div className="auth-err">{err}</div>}
 
-      {prospects.length > 0 && (
-        <div className="pr-controls">
-          <div className="pr-search">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              placeholder="Search prospects, contacts, notes"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              aria-label="Search prospects"
-            />
-          </div>
-          <div className="pr-chips">
-            <button className={'pr-chip' + (townSel.length === 0 ? ' on' : '')} onClick={() => setTownSel([])}>All localities</button>
-            {towns.map(t => (
-              <button key={t} className={'pr-chip' + (townSel.includes(t) ? ' on' : '')} onClick={() => toggleTown(t)}>{t}</button>
-            ))}
-            <button className={'pr-chip' + (independentOnly ? ' on' : '')} onClick={() => setIndependentOnly(v => !v)}>Independent only</button>
-            <select className="pr-fsel" value={prioFilter} onChange={e => setPrioFilter(e.target.value)} aria-label="Priority filter">
-              <option value="all">All priorities</option>
-              {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <select className="pr-fsel" value={stageFilter} onChange={e => setStageFilter(e.target.value)} aria-label="Stage filter">
-              <option value="all">All stages</option>
-              {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select className="pr-fsel" value={assignedFilter} onChange={e => setAssignedFilter(e.target.value)} aria-label="Assigned to filter">
-              <option value="all">Assigned to anyone</option>
-              {staff.map(s => <option key={s.id} value={s.id}>{staffName(s)}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
+      {prospects.length > 0 && (() => {
+        // One dismissible chip per active filter; the panel holds the full set.
+        const activeChips = [
+          ...townSel.map(t => ({ key: 'town-' + t, label: t, clear: () => toggleTown(t) })),
+          ...(independentOnly ? [{ key: 'indep', label: 'Independent only', clear: () => setIndependentOnly(false) }] : []),
+          ...(prioFilter !== 'all' ? [{ key: 'prio', label: 'Priority: ' + prioFilter, clear: () => setPrioFilter('all') }] : []),
+          ...(stageFilter !== 'all' ? [{ key: 'stage', label: 'Stage: ' + stageFilter, clear: () => setStageFilter('all') }] : []),
+          ...(assignedFilter !== 'all' ? [{
+            key: 'assigned',
+            label: 'Assigned: ' + staffName(staff.find(s => s.id === assignedFilter) || {}),
+            clear: () => setAssignedFilter('all')
+          }] : [])
+        ];
+        return (
+          <>
+            <div className="pr-controls">
+              <div className="pr-search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  placeholder="Search prospects, contacts, notes"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  aria-label="Search prospects"
+                />
+              </div>
+              <div className="pr-chips">
+                <button
+                  className={'pr-chip pr-filter-btn' + (filtersOpen ? ' on' : '')}
+                  onClick={() => setFiltersOpen(o => !o)}
+                  aria-expanded={filtersOpen}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M4 6h16M7 12h10M10 18h4" />
+                  </svg>
+                  Filters{activeChips.length > 0 ? ` (${activeChips.length})` : ''}
+                </button>
+                {activeChips.map(c => (
+                  <button key={c.key} className="pr-chip on" onClick={c.clear} title="Remove filter">
+                    {c.label} <span aria-hidden="true">&times;</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filtersOpen && (
+              <div className="pr-filter-panel">
+                <div className="pr-chips">
+                  <button className={'pr-chip' + (townSel.length === 0 ? ' on' : '')} onClick={() => setTownSel([])}>All localities</button>
+                  {towns.map(t => (
+                    <button key={t} className={'pr-chip' + (townSel.includes(t) ? ' on' : '')} onClick={() => toggleTown(t)}>{t}</button>
+                  ))}
+                </div>
+                <div className="pr-chips">
+                  <button className={'pr-chip' + (independentOnly ? ' on' : '')} onClick={() => setIndependentOnly(v => !v)}>Independent only</button>
+                  <select className="pr-fsel" value={prioFilter} onChange={e => setPrioFilter(e.target.value)} aria-label="Priority filter">
+                    <option value="all">All priorities</option>
+                    {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <select className="pr-fsel" value={stageFilter} onChange={e => setStageFilter(e.target.value)} aria-label="Stage filter">
+                    <option value="all">All stages</option>
+                    {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <select className="pr-fsel" value={assignedFilter} onChange={e => setAssignedFilter(e.target.value)} aria-label="Assigned to filter">
+                    <option value="all">Assigned to anyone</option>
+                    {staff.map(s => <option key={s.id} value={s.id}>{staffName(s)}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {prospects.length === 0 && (
         <div className="pr-empty-card">No prospects yet. Add one or import a CSV.</div>

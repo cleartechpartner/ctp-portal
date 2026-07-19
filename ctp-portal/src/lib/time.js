@@ -107,6 +107,20 @@ export function fmtMoney(n, currency = 'EUR') {
 
 // Format a { EUR: 120, USD: 80 } map as "€120.00 + $80.00". Amounts across
 // clients can span currencies, so we never collapse them into one total.
+// Stacked per-currency lines for the Billable amount card: euro line first,
+// dollar line under it, plain symbols only (Intl en-GB writes USD as "US$").
+const CUR_SYMBOL = { EUR: '€', USD: '$' };
+export function fmtAmountLines(map) {
+  const entries = Object.entries(map).filter(([, v]) => v);
+  if (!entries.length) return [fmtMoney(0)];
+  const rank = (c) => c === 'EUR' ? 0 : c === 'USD' ? 1 : 2;
+  entries.sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
+  return entries.map(([c, v]) => {
+    const num = (v || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return CUR_SYMBOL[c] ? CUR_SYMBOL[c] + num : fmtMoney(v, c);
+  });
+}
+
 export function fmtAmountsByCurrency(map) {
   const parts = Object.entries(map)
     .filter(([, v]) => v)

@@ -53,10 +53,7 @@ export default function Sign() {
   return (
     <div className="page">
       <div className="co-header">
-        <div>
-          <h1>E-Signature</h1>
-          <p className="sub">Send documents for signature, track progress, download sealed copies.</p>
-        </div>
+        <div />
         <div className="co-actions">
           <button className="btn" onClick={() => nav('/sign/new')}>+ New document</button>
         </div>

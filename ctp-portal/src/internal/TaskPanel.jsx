@@ -6,6 +6,13 @@ import {
   initials, staffName, isOverdue, fmtDue, todayISO, safeFileName
 } from '../lib/tasks';
 
+// Photo when the profile has one, initials only as the fallback. Same
+// footprint as the plain initials circle so every stack keeps its layout.
+function Face({ p }) {
+  if (p?.avatar_url) return <img className="tm-avatar" src={p.avatar_url} alt={staffName(p)} />;
+  return <span className="tm-avatar">{initials(p)}</span>;
+}
+
 // Reusable task panel. On the Tasks page it carries the full bucket picker
 // (All | Internal | each client). On a client's page it is pinned to that
 // client via fixedClientId. Staff-only by placement: both hosts live inside
@@ -60,20 +67,20 @@ const CELEBRATIONS = [
   }
 ];
 
-// Month grid: Monday-start weeks, tasks sit on their due date's cell.
-function CalendarView({ monthDate, tasks, onPrev, onNext, onToday, onOpen }) {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const first = new Date(year, month, 1);
-  const gridStart = new Date(first);
-  gridStart.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+// Calendar: Day / Week / Month, same segmented-toggle pattern as the Time
+// page timesheet. Monday-start weeks, tasks sit on their due date's cell.
+function CalendarView({ tasks, onOpen }) {
+  const [mode, setMode] = useState('month'); // day | week | month
+  const [anchor, setAnchor] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
 
-  const days = [];
-  const d = new Date(gridStart);
-  do {
-    days.push(new Date(d));
-    d.setDate(d.getDate() + 1);
-  } while (d.getMonth() === month || d.getDay() !== 1 || days.length < 7);
+  const shift = (dir) => setAnchor(a => {
+    const d = new Date(a);
+    if (mode === 'day') d.setDate(d.getDate() + dir);
+    else if (mode === 'week') d.setDate(d.getDate() + 7 * dir);
+    else d.setMonth(d.getMonth() + dir);
+    return d;
+  });
+  const goToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); setAnchor(d); };
 
   const key = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
   const todayKey = key(new Date());
@@ -83,41 +90,87 @@ function CalendarView({ monthDate, tasks, onPrev, onNext, onToday, onOpen }) {
     (byDay[t.due_date] = byDay[t.due_date] || []).push(t);
   }
   const undated = tasks.filter(t => !t.due_date && t.status === 'open').length;
-  const monthLabel = monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  let days = [];
+  if (mode === 'month') {
+    const first = new Date(year, month, 1);
+    const gridStart = new Date(first);
+    gridStart.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+    const d = new Date(gridStart);
+    do {
+      days.push(new Date(d));
+      d.setDate(d.getDate() + 1);
+    } while (d.getMonth() === month || d.getDay() !== 1 || days.length < 7);
+  } else if (mode === 'week') {
+    const start = new Date(anchor);
+    start.setDate(anchor.getDate() - ((anchor.getDay() + 6) % 7));
+    days = [...Array(7)].map((_, i) => { const x = new Date(start); x.setDate(start.getDate() + i); return x; });
+  }
+
+  const fmt = (d, opts) => d.toLocaleDateString('en-GB', opts);
+  const label = mode === 'month' ? fmt(anchor, { month: 'long', year: 'numeric' })
+    : mode === 'week' ? `${fmt(days[0], { day: 'numeric', month: 'short' })} - ${fmt(days[6], { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : fmt(anchor, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const taskBtn = (t) => (
+    <button key={t.id} type="button"
+      className={'tm-cal-task' + (t.status === 'done' ? ' done' : '') + (isOverdue(t) ? ' late' : '')}
+      title={t.title + (t.clients?.name ? ' | ' + t.clients.name : ' | Internal')}
+      onClick={() => onOpen(t.id)}>
+      {t.title}
+    </button>
+  );
+
+  const dayTasks = byDay[key(anchor)] || [];
 
   return (
     <div className="card" style={{ padding: 0 }}>
       <div className="tm-cal-head">
         <div className="row">
-          <button className="btn sm gh" onClick={onPrev}>&lt;</button>
-          <button className="btn sm gh" onClick={onToday}>Today</button>
-          <button className="btn sm gh" onClick={onNext}>&gt;</button>
+          <div className="seg">
+            {[['day', 'Day'], ['week', 'Week'], ['month', 'Month']].map(([v, l]) => (
+              <button key={v} type="button" className={'seg-btn' + (mode === v ? ' on' : '')} onClick={() => setMode(v)}>{l}</button>
+            ))}
+          </div>
+          <button className="btn sm gh" onClick={() => shift(-1)}>&lt;</button>
+          <button className="btn sm gh" onClick={goToday}>Today</button>
+          <button className="btn sm gh" onClick={() => shift(1)}>&gt;</button>
         </div>
-        <b>{monthLabel}</b>
+        <b>{label}</b>
         <span className="sub">{undated ? `${undated} open without a due date (list view shows them)` : ''}</span>
       </div>
-      <div className="tm-cal-grid tm-cal-week">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(w => <div key={w} className="tm-cal-wd">{w}</div>)}
-      </div>
-      <div className="tm-cal-grid">
-        {days.map(day => {
-          const k = key(day);
-          const inMonth = day.getMonth() === month;
-          return (
-            <div key={k} className={'tm-cal-cell' + (inMonth ? '' : ' out') + (k === todayKey ? ' today' : '')}>
-              <div className="tm-cal-daynum">{day.getDate()}</div>
-              {(byDay[k] || []).map(t => (
-                <button key={t.id} type="button"
-                  className={'tm-cal-task' + (t.status === 'done' ? ' done' : '') + (isOverdue(t) ? ' late' : '')}
-                  title={t.title + (t.clients?.name ? ' | ' + t.clients.name : ' | Internal')}
-                  onClick={() => onOpen(t.id)}>
-                  {t.title}
-                </button>
-              ))}
+
+      {mode === 'day' ? (
+        <div className="tm-cal-day-list">
+          {dayTasks.length === 0 && <div className="empty">Nothing due this day.</div>}
+          {dayTasks.map(t => (
+            <div key={t.id} className="tm-cal-dayrow">
+              {taskBtn(t)}
+              <span className="sub">{t.clients?.name || 'Internal'}</span>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="tm-cal-grid tm-cal-week">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(w => <div key={w} className="tm-cal-wd">{w}</div>)}
+          </div>
+          <div className={'tm-cal-grid' + (mode === 'week' ? ' tm-cal-oneweek' : '')}>
+            {days.map(day => {
+              const k = key(day);
+              const inMonth = mode === 'week' || day.getMonth() === month;
+              return (
+                <div key={k} className={'tm-cal-cell' + (inMonth ? '' : ' out') + (k === todayKey ? ' today' : '')}>
+                  <div className="tm-cal-daynum">{day.getDate()}</div>
+                  {(byDay[k] || []).map(taskBtn)}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -165,7 +218,7 @@ export function AssigneePicker({ staff, value, onChange, placeholder, avatarMode
       {avatarMode ? (
         <button type="button" className="tm-avatar-trigger" title={label} onClick={() => setOpen(o => !o)}>
           {selected.length === 0 && <span className="tm-avatar tm-avatar-add">+</span>}
-          {selected.slice(0, 3).map(s => <span key={s.id} className="tm-avatar">{initials(s)}</span>)}
+          {selected.slice(0, 3).map(s => <Face key={s.id} p={s} />)}
           {selected.length > 3 && <span className="tm-avatar tm-avatar-empty">+{selected.length - 3}</span>}
         </button>
       ) : (
@@ -183,7 +236,7 @@ export function AssigneePicker({ staff, value, onChange, placeholder, avatarMode
                 checked={value.includes(s.id)}
                 onChange={() => onChange(value.includes(s.id) ? value.filter(x => x !== s.id) : [...value, s.id])}
               />
-              <span className="tm-avatar">{initials(s)}</span>
+              <Face p={s} />
               {staffName(s)}
             </label>
           ))}
@@ -201,7 +254,6 @@ export default function TaskPanel({ profile, fixedClientId }) {
   const [bucket, setBucket] = useState(fixedClientId ? fixedClientId : ALL);
   const [person, setPerson] = useState('');
   const [view, setView] = useState('list'); // list | calendar
-  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; });
   const [showDone, setShowDone] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [preview, setPreview] = useState(null); // { name, url, kind } | { name, loading }
@@ -386,7 +438,7 @@ export default function TaskPanel({ profile, fixedClientId }) {
             <span className="tm-bubble tm-b-client">{t.clients?.name || 'Internal'}</span>
             <span className="tm-avatars tm-row-avatars" title={assignees.map(staffName).join(', ') || 'Unassigned'}>
               {assignees.length === 0 && <span className="tm-avatar tm-avatar-empty">?</span>}
-              {assignees.slice(0, 3).map(a => <span key={a.id} className="tm-avatar">{initials(a)}</span>)}
+              {assignees.slice(0, 3).map(a => <Face key={a.id} p={a} />)}
               {assignees.length > 3 && <span className="tm-avatar tm-avatar-empty">+{assignees.length - 3}</span>}
             </span>
             <span className={'tm-bubble ' + (overdue ? 'tm-b-overdue' : 'tm-b-due')}>
@@ -505,14 +557,7 @@ export default function TaskPanel({ profile, fixedClientId }) {
         </>
       ) : (
         <div style={{ marginTop: 20 }}>
-          <CalendarView
-            monthDate={calMonth}
-            tasks={[...open, ...done]}
-            onPrev={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-            onNext={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-            onToday={() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setCalMonth(d); }}
-            onOpen={setExpandedId}
-          />
+          <CalendarView tasks={[...open, ...done]} onOpen={setExpandedId} />
         </div>
       )}
 
@@ -577,7 +622,7 @@ function TaskEditor({ task, staff, clients, profile, lockedClientId, onChanged, 
 
   const loadComments = async () => {
     const { data, error } = await supabase.from('task_comments')
-      .select('id, body, created_at, author, profiles(full_name, email)')
+      .select('id, body, created_at, author, profiles(full_name, email, avatar_url)')
       .eq('task_id', task.id)
       .order('created_at', { ascending: true });
     if (error) { setComments([]); onError(error.message); return; }
@@ -715,7 +760,7 @@ function TaskEditor({ task, staff, clients, profile, lockedClientId, onChanged, 
         {(comments || []).map(c => (
           <div key={c.id} className="tm-comment">
             <div className="tm-comment-head">
-              <span className="tm-avatar">{initials(c.profiles)}</span>
+              <Face p={c.profiles} />
               <b>{staffName(c.profiles)}</b>
               <span className="meta">{fmtStamp(c.created_at)}</span>
             </div>
