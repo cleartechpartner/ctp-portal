@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { fx } from '../lib/api';
 import { fetchStaff } from '../lib/tasks';
 import ProspectImport from './ProspectImport';
 import {
@@ -477,6 +478,7 @@ function ProspectDetail({ prospect, myProfile, staff, onChanged, toast, nav }) {
   const [interactions, setInteractions] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [logOpen, setLogOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [factsOpen, setFactsOpen] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -598,6 +600,7 @@ function ProspectDetail({ prospect, myProfile, staff, onChanged, toast, nav }) {
 
       <div className="pr-dactions">
         <button className="pr-btn primary" onClick={() => setLogOpen(true)}>Log activity</button>
+        <button className="pr-btn" onClick={() => setEmailOpen(true)}>Send email</button>
         <button className="pr-btn" onClick={() => nav(`/proposals/new?client=${prospect.id}`)}>Generate Proposal</button>
       </div>
 
@@ -620,6 +623,15 @@ function ProspectDetail({ prospect, myProfile, staff, onChanged, toast, nav }) {
         />
       )}
 
+      {emailOpen && (
+        <SendEmailModal
+          prospect={prospect}
+          contacts={contacts || []}
+          onClose={() => setEmailOpen(false)}
+          onSent={() => { setEmailOpen(false); toast('Email sent and logged'); refreshAll(); }}
+        />
+      )}
+
       {factsOpen && (
         <FactsModal
           prospect={prospect}
@@ -628,6 +640,74 @@ function ProspectDetail({ prospect, myProfile, staff, onChanged, toast, nav }) {
           toast={toast}
         />
       )}
+    </div>
+  );
+}
+
+/* ---------- Send email (Resend via prospect-email function) ---------- */
+
+function SendEmailModal({ prospect, contacts, onClose, onSent }) {
+  const primary = contacts.find(c => c.is_primary && c.email) || contacts.find(c => c.email);
+  const [form, setForm] = useState({
+    contact_id: primary?.id || '',
+    to: primary?.email || prospect.contact_email || '',
+    subject: '',
+    message: '',
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const F = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const pickContact = (e) => {
+    const c = contacts.find(x => x.id === e.target.value);
+    setForm(f => ({ ...f, contact_id: e.target.value, to: c?.email || f.to }));
+  };
+
+  const send = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr('');
+    try {
+      await fx('/api/prospect-email', {
+        client_id: prospect.id,
+        contact_id: form.contact_id || null,
+        to: form.to.trim(),
+        subject: form.subject.trim(),
+        message: form.message.trim(),
+      });
+      onSent();
+    } catch (ex) { setErr(ex.message); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <form className="modal" onClick={e => e.stopPropagation()} onSubmit={send}>
+        <div className="modal-head"><h3>Send email</h3><button type="button" className="link-btn" onClick={onClose}>Close</button></div>
+        {err && <div className="auth-err">{err}</div>}
+        <div className="grid2">
+          <div className="fld"><label className="lab">Contact</label>
+            <select className="sel" value={form.contact_id} onChange={pickContact}>
+              <option value="">No linked contact</option>
+              {contacts.map(c => <option key={c.id} value={c.id}>{c.full_name}{c.email ? ` (${c.email})` : ''}</option>)}
+            </select></div>
+          <div className="fld"><label className="lab">To</label>
+            <input className="ti" type="email" value={form.to} onChange={F('to')} required placeholder="gm@hotel-example.com" /></div>
+        </div>
+        <div className="fld"><label className="lab">Subject</label>
+          <input className="ti" value={form.subject} onChange={F('subject')} required placeholder="Guida for after-hours guest calls" /></div>
+        <div className="fld"><label className="lab">Message</label>
+          <textarea className="ta big" value={form.message} onChange={F('message')} required /></div>
+        <div className="sub" style={{ marginBottom: 12 }}>
+          Sends from the portal address with reply-to set to you, and logs on the activity timeline.
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn gh sm" onClick={onClose}>Cancel</button>
+          <button className="btn sm" disabled={busy || !form.to.trim() || !form.subject.trim() || !form.message.trim()}>
+            {busy ? 'Sending...' : 'Send email'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
