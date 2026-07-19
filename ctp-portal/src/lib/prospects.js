@@ -79,19 +79,10 @@ export function lastActivityPhrase(interactions) {
   return (VERB[latest.kind] || 'contacted') + ' ' + timeAgoShort(latest.occurred_at);
 }
 
-// Latest interaction of any kind, for the card owner avatar.
-export function latestInteraction(interactions) {
-  let latest = null;
-  for (const i of interactions || []) {
-    if (!latest || i.occurred_at > latest.occurred_at) latest = i;
-  }
-  return latest;
-}
-
 export async function fetchProspects() {
   const { data, error } = await supabase
     .from('clients')
-    .select('*, contacts(id, full_name, role, email, is_primary), interactions(kind, occurred_at, created_by)')
+    .select('*, contacts(id, full_name, role, email, is_primary, avatar_url), interactions(kind, occurred_at)')
     .eq('client_status', 'prospect')
     .order('name');
   if (error) throw new Error(error.message);

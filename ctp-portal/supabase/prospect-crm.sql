@@ -30,6 +30,10 @@ alter table public.clients add column if not exists next_step_date date;
 alter table public.clients add column if not exists source text;
 alter table public.clients add column if not exists website text;
 alter table public.clients add column if not exists phone text;
+-- Staff members working this prospect. Array of profiles ids; a plain
+-- column (not a join table) because assignment is display and filter
+-- state, never a security boundary.
+alter table public.clients add column if not exists assigned_to uuid[] default '{}';
 
 -- ---------- 2 | CONTACTS ----------
 
@@ -46,6 +50,10 @@ create table if not exists public.contacts (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Contact photos live in the existing avatars bucket (public read,
+-- per-uid folder write), so no new storage policies are needed.
+alter table public.contacts add column if not exists avatar_url text;
 
 create index if not exists contacts_client_idx on public.contacts(client_id);
 
