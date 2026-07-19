@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { translate, notify, inviteClient, signedUrl, fmtBytes, monthLabel } from '../lib/api';
+import { PROPOSAL_STATUS, proposalNumber, fmtMoney, computeTotals, isProposalDoc, openProposalDoc } from '../lib/proposals';
 import TaskPanel from './TaskPanel';
 
 const PROJECT_TYPES = ['AI guest agents', 'Systems and integrations', 'Consulting and operations', 'Other'];
@@ -52,7 +53,9 @@ export default function ClientDetail({ profile }) {
           </div>
           <div className="row">
             <span className={`chip ${client.language}`}>{client.language === 'es' ? 'Portal in Spanish' : 'Portal in English'}</span>
-            <span className={`chip ${client.status}`}>{STATUS_LABELS[client.status] || client.status}</span>
+            {client.client_status === 'prospect'
+              ? <span className="co-pill st-prospect">Prospect</span>
+              : <span className={`chip ${client.status}`}>{STATUS_LABELS[client.status] || client.status}</span>}
           </div>
         </div>
       </div>
@@ -98,7 +101,8 @@ function Overview({ client, onSaved, toast }) {
   const save = async () => {
     const { error } = await supabase.from('clients').update({
       name: form.name, property_type: form.property_type, contact_name: form.contact_name,
-      contact_email: form.contact_email, language: form.language, status: form.status, partner_notes: form.partner_notes
+      contact_email: form.contact_email, language: form.language, status: form.status, partner_notes: form.partner_notes,
+      location: form.location || null, tax_id: form.tax_id || null
     }).eq('id', client.id);
     if (error) { toast('Save failed'); return; }
     setDirty(false); setEditing(false); toast('Client saved'); onSaved();
@@ -124,6 +128,10 @@ function Overview({ client, onSaved, toast }) {
 
   return (
     <>
+      {client.client_status === 'prospect' && (
+        <ProspectProposals client={client} onConverted={onSaved} toast={toast} />
+      )}
+
       <div className="card">
         <div className="spread">
           <h3>Client profile</h3>
@@ -139,8 +147,10 @@ function Overview({ client, onSaved, toast }) {
               <CdRow label="Type" value={form.property_type} />
               <CdRow label="Contact name" value={form.contact_name} />
               <CdRow label="Contact email" value={form.contact_email} />
+              <CdRow label="Location" value={form.location} />
+              <CdRow label="Tax ID" value={form.tax_id} />
               <CdRow label="Portal language" value={form.language === 'es' ? 'Español' : 'English'} />
-              <CdRow label="Status" value={STATUS_LABELS[form.status] || form.status} />
+              <CdRow label="Status" value={client.client_status === 'prospect' ? 'Prospect' : (STATUS_LABELS[form.status] || form.status)} />
             </div>
             <div className="cd-row-full">
               <div className="lab">Internal notes</div>
@@ -154,6 +164,8 @@ function Overview({ client, onSaved, toast }) {
               <div className="fld"><label className="lab">Type</label><input className="ti" value={form.property_type || ''} onChange={F('property_type')} /></div>
               <div className="fld"><label className="lab">Contact name</label><input className="ti" value={form.contact_name || ''} onChange={F('contact_name')} /></div>
               <div className="fld"><label className="lab">Contact email</label><input className="ti" value={form.contact_email || ''} onChange={F('contact_email')} /></div>
+              <div className="fld"><label className="lab">Location</label><input className="ti" value={form.location || ''} onChange={F('location')} placeholder="Mahón, Menorca, Spain" /></div>
+              <div className="fld"><label className="lab">Tax ID</label><input className="ti" value={form.tax_id || ''} onChange={F('tax_id')} /></div>
               <div className="fld"><label className="lab">Portal language</label>
                 <select className="sel" value={form.language} onChange={F('language')}><option value="en">English</option><option value="es">Español</option></select></div>
               <div className="fld"><label className="lab">Status</label>
@@ -228,6 +240,80 @@ function CdRow({ label, value }) {
     <div className="cd-row">
       <div className="lab">{label}</div>
       <div className="cd-val">{value || '—'}</div>
+    </div>
+  );
+}
+
+/* ---------- Prospect proposals (only rendered for client_status = prospect) ---------- */
+function ProspectProposals({ client, onConverted, toast }) {
+  const nav = useNavigate();
+  const [proposals, setProposals] = useState(null);
+  const [converting, setConverting] = useState(false);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from('proposals')
+      .select('id, proposal_number, project_title, currency, status, content_json, created_at, sent_at, signed_at')
+      .eq('client_id', client.id)
+      .order('created_at', { ascending: false });
+    setProposals(data || []);
+  };
+  useEffect(() => { load(); }, [client.id]);
+
+  const hasSigned = (proposals || []).some(p => p.status === 'signed');
+
+  const convert = async () => {
+    if (!confirm(`Convert ${client.name} to an active client? This enables the portal invite flow.`)) return;
+    setConverting(true);
+    const { error } = await supabase.from('clients')
+      .update({ client_status: 'active' }).eq('id', client.id);
+    if (error) { toast('Convert failed: ' + error.message); setConverting(false); return; }
+    await supabase.from('activity_log').insert({
+      actor_email: (await supabase.auth.getUser()).data?.user?.email,
+      action: 'prospect_converted', client_id: client.id, details: client.name
+    });
+    toast('Converted to active client. Portal invites are now available in the Access tab.');
+    setConverting(false);
+    onConverted();
+  };
+
+  return (
+    <div className="card spine" style={{ marginBottom: 22 }}>
+      <div className="spread">
+        <div>
+          <h3>Proposals</h3>
+          <div className="sub">Draft, send and track this prospect's proposals. Signing converts them into a client.</div>
+        </div>
+        <div className="row">
+          {hasSigned && (
+            <button className="btn sm" disabled={converting} onClick={convert}>
+              {converting ? 'Converting…' : 'Convert to Active Client'}
+            </button>
+          )}
+          <button className="btn sm gh" onClick={() => nav(`/proposals/new?client=${client.id}`)}>Generate Proposal</button>
+        </div>
+      </div>
+      <div className="mt">
+        {proposals === null && <div className="sub">Loading…</div>}
+        {proposals?.length === 0 && <div className="empty">No proposals yet. Generate the first one.</div>}
+        {(proposals || []).map(p => {
+          const sc = PROPOSAL_STATUS[p.status] || PROPOSAL_STATUS.draft;
+          const totals = computeTotals(p.content_json || {});
+          return (
+            <div key={p.id} className="item" style={{ cursor: 'pointer' }} onClick={() => nav(`/proposals/${p.id}`)}>
+              <div>
+                <div className="nm">{proposalNumber(p.proposal_number)} | {p.project_title}</div>
+                <div className="meta">
+                  {totals.missing ? '[VERIFY]' : fmtMoney(totals.total, p.currency)} · {new Date(p.signed_at || p.sent_at || p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+              </div>
+              <span className={`co-pill ${sc.cls}`}>
+                <span className="co-dot" style={{ background: sc.dot, marginRight: 6 }} />{sc.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -579,12 +665,15 @@ function DocumentsTab({ client, toast }) {
   };
 
   const open = async (d) => {
-    try { window.open(await signedUrl(d.storage_path), '_blank'); }
-    catch { toast('Could not open file'); }
+    try {
+      // Signed proposals have no storage object; the bytes come over RPC.
+      if (isProposalDoc(d)) { await openProposalDoc(d); return; }
+      window.open(await signedUrl(d.storage_path), '_blank');
+    } catch { toast('Could not open file'); }
   };
   const remove = async (d) => {
     if (!confirm(`Delete "${d.name}"?`)) return;
-    await supabase.storage.from('client-docs').remove([d.storage_path]);
+    if (!isProposalDoc(d)) await supabase.storage.from('client-docs').remove([d.storage_path]);
     await supabase.from('documents').delete().eq('id', d.id);
     load();
   };
@@ -740,6 +829,20 @@ function AccessTab({ client, toast }) {
     } catch (err) { toast('Invite failed: ' + err.message); }
     setBusy(false);
   };
+
+  // Prospects never get portal invites; conversion happens on the Overview
+  // tab once a proposal is signed.
+  if (client.client_status === 'prospect') {
+    return (
+      <div className="card">
+        <h3>Portal access</h3>
+        <div className="empty mt">
+          Prospects do not get portal access. Once their proposal is signed, use
+          Convert to Active Client on the Overview tab to enable invites.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card">

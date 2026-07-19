@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useLang } from '../lib/i18n';
 import { signedUrl, fmtBytes, notify } from '../lib/api';
+import { isProposalDoc, openProposalDoc } from '../lib/proposals';
 
 export default function Documents({ profile }) {
   const { t, lang } = useLang();
@@ -35,7 +36,10 @@ export default function Documents({ profile }) {
   };
 
   const open = async (d) => {
-    try { window.open(await signedUrl(d.storage_path), '_blank'); } catch {}
+    try {
+      if (isProposalDoc(d)) { await openProposalDoc(d); return; }
+      window.open(await signedUrl(d.storage_path), '_blank');
+    } catch {}
   };
 
   if (!docs) return <div className="center"><div className="sp" /></div>;

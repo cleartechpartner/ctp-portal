@@ -12,6 +12,12 @@ const STATUS_CFG = {
   archived:        { label: 'Archived',        dot: '#6b7280', cls: 'st-archived'  },
 };
 
+// Prospects show this instead of the engagement status pill: they have no
+// engagement yet, only a proposal pipeline.
+const PROSPECT_CFG = { label: 'Prospect', dot: '#7C3AED', cls: 'st-prospect' };
+const clientStatusCfg = (c) =>
+  c.client_status === 'prospect' ? PROSPECT_CFG : (STATUS_CFG[c.status] || STATUS_CFG.active);
+
 const PROJECT_STATUS_PILLS = {
   planned:     { cls: 'wp-neutral' },
   in_progress: { cls: 'wp-progress' },
@@ -54,9 +60,11 @@ export default function InternalHome() {
   const [activityExpanded, setActivityExpanded] = useState(false);
   const [myProfile, setMyProfile] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', property_type: PROPERTY_TYPES[0], contact_name: '', contact_email: '', language: 'en', partner_notes: '' });
+  const blankForm = { name: '', client_status: 'active', property_type: PROPERTY_TYPES[0], contact_name: '', contact_email: '', location: '', tax_id: '', language: 'en', partner_notes: '' };
+  const [form, setForm] = useState(blankForm);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // all | active | prospect
   const [view, setView] = useState(() => {
     try { return localStorage.getItem('ctp-client-view') || 'grid'; } catch { return 'grid'; }
   });
@@ -93,7 +101,10 @@ export default function InternalHome() {
   const createClient = async (e) => {
     e.preventDefault();
     setErr(''); setBusy(true);
-    const { data, error } = await supabase.from('clients').insert(form).select().single();
+    // client_status, location and tax_id need supabase/proposals.sql to
+    // have run; the error message will say so if it has not.
+    const row = { ...form, location: form.location.trim() || null, tax_id: form.tax_id.trim() || null };
+    const { data, error } = await supabase.from('clients').insert(row).select().single();
     setBusy(false);
     if (error) { setErr(error.message); return; }
     nav(`/clients/${data.id}`);
@@ -147,6 +158,13 @@ export default function InternalHome() {
 
   const visibleActivity = activityExpanded ? activity : activity.slice(0, ACTIVITY_PREVIEW_COUNT);
 
+  const prospectCount = clients.filter(c => c.client_status === 'prospect').length;
+  const filteredClients = clients.filter(c =>
+    statusFilter === 'all' ? true :
+    statusFilter === 'prospect' ? c.client_status === 'prospect' :
+    c.client_status !== 'prospect'
+  );
+
   return (
     <div className="page">
       {/* Header */}
@@ -193,11 +211,20 @@ export default function InternalHome() {
       {creating && (
         <form className="card spine" onSubmit={createClient} style={{ marginBottom: 22 }}>
           <h3>New client</h3>
-          <div className="sub" style={{ marginBottom: 16 }}>Create the record first — projects, reports and portal access come next.</div>
+          <div className="sub" style={{ marginBottom: 16 }}>
+            {form.client_status === 'prospect'
+              ? 'Prospects get proposals, not portal access. Convert them once a proposal is signed.'
+              : 'Create the record first — projects, reports and portal access come next.'}
+          </div>
           {err && <div className="auth-err">{err}</div>}
           <div className="grid2">
             <div className="fld"><label className="lab">Client / property name</label>
               <input className="ti" value={form.name} onChange={F('name')} required placeholder="Hotel Ses Bruixes & Spa" /></div>
+            <div className="fld"><label className="lab">Status</label>
+              <select className="sel" value={form.client_status} onChange={F('client_status')}>
+                <option value="active">Active client</option>
+                <option value="prospect">Prospect</option>
+              </select></div>
             <div className="fld"><label className="lab">Type</label>
               <select className="sel" value={form.property_type} onChange={F('property_type')}>
                 {PROPERTY_TYPES.map(p => <option key={p}>{p}</option>)}
@@ -206,6 +233,10 @@ export default function InternalHome() {
               <input className="ti" value={form.contact_name} onChange={F('contact_name')} placeholder="Anya" /></div>
             <div className="fld"><label className="lab">Contact email</label>
               <input className="ti" type="email" value={form.contact_email} onChange={F('contact_email')} /></div>
+            <div className="fld"><label className="lab">Location</label>
+              <input className="ti" value={form.location} onChange={F('location')} placeholder="Mahón, Menorca, Spain" /></div>
+            <div className="fld"><label className="lab">Tax ID (optional)</label>
+              <input className="ti" value={form.tax_id} onChange={F('tax_id')} placeholder="B57798290" /></div>
             <div className="fld"><label className="lab">Portal language</label>
               <select className="sel" value={form.language} onChange={F('language')}>
                 <option value="en">English</option><option value="es">Español</option>
@@ -217,16 +248,30 @@ export default function InternalHome() {
         </form>
       )}
 
+      {/* All / Active / Prospects filter */}
+      {clients.length > 0 && (
+        <div className="doc-filters" style={{ marginBottom: 16 }}>
+          {[['all', 'All', clients.length], ['active', 'Active', clients.length - prospectCount], ['prospect', 'Prospects', prospectCount]].map(([v, l, count]) => (
+            <button key={v} className={`filter-chip${statusFilter === v ? ' on' : ''}`} onClick={() => setStatusFilter(v)}>
+              {l}<span className="filter-count">{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Empty state */}
       {clients.length === 0 && !creating && (
         <div className="card"><div className="empty">No clients yet. Create the first one.</div></div>
       )}
+      {clients.length > 0 && filteredClients.length === 0 && (
+        <div className="card"><div className="empty">{statusFilter === 'prospect' ? 'No prospects yet.' : 'No active clients yet.'}</div></div>
+      )}
 
       {/* Grid view */}
-      {view === 'grid' && clients.length > 0 && (
+      {view === 'grid' && filteredClients.length > 0 && (
         <div className="co-grid">
-          {clients.map(c => {
-            const sc = STATUS_CFG[c.status] || STATUS_CFG.active;
+          {filteredClients.map(c => {
+            const sc = clientStatusCfg(c);
             const projects = c.projects || [];
             const activeProjects = projects.filter(p => p.status === 'live' || p.status === 'in_progress');
             const days = daysSince(c.created_at);
@@ -289,7 +334,7 @@ export default function InternalHome() {
       )}
 
       {/* List view */}
-      {view === 'list' && clients.length > 0 && (
+      {view === 'list' && filteredClients.length > 0 && (
         <div className="co-table">
           <div className="co-table-head">
             <div className="co-th co-th-client">Client</div>
@@ -298,8 +343,8 @@ export default function InternalHome() {
             <div className="co-th co-th-team">Team</div>
             <div className="co-th co-th-actions"></div>
           </div>
-          {clients.map(c => {
-            const sc = STATUS_CFG[c.status] || STATUS_CFG.active;
+          {filteredClients.map(c => {
+            const sc = clientStatusCfg(c);
             const projects = c.projects || [];
             const visibleProjects = projects.filter(p => p.status !== 'complete').slice(0, 3);
             return (

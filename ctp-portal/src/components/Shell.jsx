@@ -55,6 +55,7 @@ export default function Shell({ profile, internal, clientLinks, children }) {
         { to: '/', label: 'Client Overview', end: true },
         { to: '/studio', label: 'Content Studio', end: true },
         { to: '/sign', label: 'E-Signature' },
+        { to: '/proposals', label: 'Proposals' },
         { to: '/tasks', label: 'Tasks' },
         { to: '/time', label: 'Time' }
       ]
