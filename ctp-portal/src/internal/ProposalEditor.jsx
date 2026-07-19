@@ -52,12 +52,24 @@ function NewProposal() {
         .eq('client_status', 'prospect')
         .order('name');
       if (error) { setErr(error.message); setProspects([]); return; }
-      setProspects(cs || []);
+      let list = cs || [];
+      // Generate Proposal is also offered from Active client pages; pull
+      // the preset client into the list when it is not a prospect so the
+      // form still prefills and submits.
+      if (presetClientId && !list.some(c => c.id === presetClientId)) {
+        const { data: preset } = await supabase
+          .from('clients')
+          .select('id, name, contact_email, location, tax_id, language, client_status')
+          .eq('id', presetClientId)
+          .single();
+        if (preset) list = [preset, ...list];
+      }
+      setProspects(list);
       const { data: svcs } = await supabase
         .from('proposal_services').select('*').eq('is_active', true).order('sort_order').order('name');
       setServices(svcs || []);
     })();
-  }, []);
+  }, [presetClientId]);
 
   // Prefill from the chosen prospect.
   useEffect(() => {

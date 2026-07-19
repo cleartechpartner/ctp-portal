@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import Prospects from './Prospects';
+import NewProspectModal from './NewProspectModal';
+import ProspectImport from './ProspectImport';
 
 const PROPERTY_TYPES = ['Hotel & Spa', 'Boutique hotel', 'Villa / vacation rental', 'Spa', 'Restaurant', 'Independent owner', 'Other'];
 
@@ -64,10 +67,35 @@ export default function InternalHome() {
   const [form, setForm] = useState(blankForm);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // all | active | prospect
+  const [statusFilter, setStatusFilter] = useState('active'); // all | active | prospect
   const [view, setView] = useState(() => {
     try { return localStorage.getItem('ctp-client-view') || 'grid'; } catch { return 'grid'; }
   });
+
+  // The + Add menu and the prospect tooling it opens.
+  const [addOpen, setAddOpen] = useState(false);
+  const [newProspectOpen, setNewProspectOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [prospectRefresh, setProspectRefresh] = useState(0);
+  const [toastMsg, setToastMsg] = useState('');
+  const toast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(''), 2400); };
+
+  useEffect(() => {
+    if (!addOpen) return;
+    const close = () => setAddOpen(false);
+    const onKey = (e) => { if (e.key === 'Escape') setAddOpen(false); };
+    document.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('click', close); document.removeEventListener('keydown', onKey); };
+  }, [addOpen]);
+
+  // A prospect was created or imported: jump to the pipeline and reload
+  // both the embedded prospect views and the client list counts.
+  const showFreshProspects = () => {
+    setStatusFilter('prospect');
+    setProspectRefresh(k => k + 1);
+    load();
+  };
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [confirmText, setConfirmText] = useState('');
@@ -170,28 +198,30 @@ export default function InternalHome() {
       {/* Header */}
       <div className="co-header">
         <div>
-          <h1>Clients</h1>
+          <h1>Overview</h1>
           <p className="sub">All engagements and their status.</p>
         </div>
         <div className="co-actions">
-          <div className="co-toggle">
-            <button
-              className={`co-toggle-btn${view === 'grid' ? ' on' : ''}`}
-              onClick={() => switchView('grid')}
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
-            </button>
-            <button
-              className={`co-toggle-btn${view === 'list' ? ' on' : ''}`}
-              onClick={() => switchView('list')}
-              title="List view"
-              aria-label="List view"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="1" y="6.75" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="1" y="11.5" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/></svg>
-            </button>
-          </div>
+          {statusFilter !== 'prospect' && (
+            <div className="co-toggle">
+              <button
+                className={`co-toggle-btn${view === 'grid' ? ' on' : ''}`}
+                onClick={() => switchView('grid')}
+                title="Grid view"
+                aria-label="Grid view"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+              </button>
+              <button
+                className={`co-toggle-btn${view === 'list' ? ' on' : ''}`}
+                onClick={() => switchView('list')}
+                title="List view"
+                aria-label="List view"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="1" y="6.75" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/><rect x="1" y="11.5" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.3"/></svg>
+              </button>
+            </div>
+          )}
           <button
             className="co-toggle-btn"
             onClick={() => nav('/settings')}
@@ -201,20 +231,30 @@ export default function InternalHome() {
           >
             <Avatar profile={myProfile} size={34} />
           </button>
-          <button className="btn" onClick={() => setCreating(c => !c)}>
-            {creating ? 'Close' : '+ New client'}
-          </button>
+          <div className="add-menu" onClick={e => e.stopPropagation()}>
+            <button className="btn" onClick={() => setAddOpen(o => !o)} aria-expanded={addOpen}>+ Add</button>
+            {addOpen && (
+              <div className="add-menu-pop">
+                <button onClick={() => { setAddOpen(false); setCreating(true); }}>New Client</button>
+                <button onClick={() => { setAddOpen(false); setNewProspectOpen(true); }}>New Prospect</button>
+                <button onClick={() => { setAddOpen(false); setImportOpen(true); }}>Import CSV</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* New client form */}
       {creating && (
         <form className="card spine" onSubmit={createClient} style={{ marginBottom: 22 }}>
-          <h3>New client</h3>
+          <div className="spread">
+            <h3>New client</h3>
+            <button type="button" className="link-btn" onClick={() => setCreating(false)}>Close</button>
+          </div>
           <div className="sub" style={{ marginBottom: 16 }}>
             {form.client_status === 'prospect'
               ? 'Prospects get proposals, not portal access. Convert them once a proposal is signed.'
-              : 'Create the record first — projects, reports and portal access come next.'}
+              : 'Create the record first. Projects, reports and portal access come next.'}
           </div>
           {err && <div className="auth-err">{err}</div>}
           <div className="grid2">
@@ -259,16 +299,21 @@ export default function InternalHome() {
         </div>
       )}
 
+      {/* Prospect pipeline (board / table / split), embedded */}
+      {statusFilter === 'prospect' && (
+        <Prospects embedded refreshKey={prospectRefresh} />
+      )}
+
       {/* Empty state */}
-      {clients.length === 0 && !creating && (
+      {statusFilter !== 'prospect' && clients.length === 0 && !creating && (
         <div className="card"><div className="empty">No clients yet. Create the first one.</div></div>
       )}
-      {clients.length > 0 && filteredClients.length === 0 && (
-        <div className="card"><div className="empty">{statusFilter === 'prospect' ? 'No prospects yet.' : 'No active clients yet.'}</div></div>
+      {statusFilter !== 'prospect' && clients.length > 0 && filteredClients.length === 0 && (
+        <div className="card"><div className="empty">No active clients yet.</div></div>
       )}
 
       {/* Grid view */}
-      {view === 'grid' && filteredClients.length > 0 && (
+      {statusFilter !== 'prospect' && view === 'grid' && filteredClients.length > 0 && (
         <div className="co-grid">
           {filteredClients.map(c => {
             const sc = clientStatusCfg(c);
@@ -334,7 +379,7 @@ export default function InternalHome() {
       )}
 
       {/* List view */}
-      {view === 'list' && filteredClients.length > 0 && (
+      {statusFilter !== 'prospect' && view === 'list' && filteredClients.length > 0 && (
         <div className="co-table">
           <div className="co-table-head">
             <div className="co-th co-th-client">Client</div>
@@ -395,7 +440,7 @@ export default function InternalHome() {
       <div className="mt3">
         <div className="co-section-label">Recent activity</div>
         <div className="card">
-          {activity.length === 0 && <div className="empty">Activity will appear here — publishes, uploads, invites.</div>}
+          {activity.length === 0 && <div className="empty">Activity will appear here: publishes, uploads, invites.</div>}
           {visibleActivity.map(a => (
             <div key={a.id} className="item" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flex: 1 }}>
@@ -432,6 +477,26 @@ export default function InternalHome() {
           )}
         </div>
       </div>
+
+      {newProspectOpen && (
+        <NewProspectModal
+          myProfile={myProfile}
+          toast={toast}
+          onClose={() => setNewProspectOpen(false)}
+          onCreated={() => { setNewProspectOpen(false); showFreshProspects(); }}
+        />
+      )}
+
+      {importOpen && (
+        <ProspectImport
+          myProfile={myProfile}
+          onClose={() => setImportOpen(false)}
+          onImported={showFreshProspects}
+          toast={toast}
+        />
+      )}
+
+      {toastMsg && <div className="tst">{toastMsg}</div>}
 
       {/* Delete confirmation modal */}
       {deleteTarget && (

@@ -135,6 +135,8 @@ export default function App() {
               <Route path="/proposals" element={<Proposals />} />
               <Route path="/proposals/new" element={<ProposalEditor />} />
               <Route path="/proposals/:id" element={<ProposalEditor />} />
+              {/* Prospects merged into the Overview home page */}
+              <Route path="/prospects" element={<Navigate to="/" replace />} />
               <Route path="/tasks" element={<Tasks profile={profile} />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />

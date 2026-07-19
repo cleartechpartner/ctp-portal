@@ -1,0 +1,28 @@
+company_name,type,locality,has_spa,segment,ownership,website,phone,email,status,priority,source,notes
+Sant Joan de Binissaida,Rural boutique hotel,Es Castell,unknown,Boutique / 12 rooms,Independent,[verify],[verify],[verify],Prospect,High,Web research,18th-century manor. Small independent - strong Guida fit. Haute cuisine restaurant.
+Son Granot Hotel,Rural heritage hotel,Es Castell,unknown,Boutique,Independent,[verify],[verify],[verify],Prospect,High,Web research,Independent heritage property near beach. Good ICP fit.
+Hotel del Almirante,Traditional hotel,Es Castell,no,Mid / historic,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,Collingwood House. Traditional independent by Port of Mahon.
+Hotel Agamenon,Hotel,Es Castell,unknown,Mid,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,Sea-view pool hotel on south side of Mahon harbor.
+Hotel Victori,Hotel,Es Castell,no,3-star,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,3-star independent. Room service, tour desk.
+Pardela Menorca,Hotel,Es Castell,no,3-star,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,3-star. Terrace, non-smoking rooms.
+Hotel Son Vilar,Hotel,Son Vilar (Es Castell),no,3-star,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,3-star in Son Vilar. Your neighborhood - warm-intro potential.
+Osprey Menorca Hotel,Hotel,Es Castell,unknown,Mid,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,Well-reviewed independent. Confirm spa/tech setup.
+ARTIEM Carlos - Adults Only,Hotel,Es Castell,yes,Adults-only / chain,ARTIEM (Menorca group),https://www.artiemhotels.com,[verify],[verify],Prospect,Medium,Web research,Outdoor spa. Menorca-based BCorp group - has some central IT.
+Barcelo Hamilton Menorca,Hotel,Es Castell,no,Adults-only / chain,Barcelo,[verify],[verify],[verify],Prospect,Low,Web research,Barcelo chain - corporate IT. Deprioritize.
+Palladium Hotel Menorca,Hotel,Es Castell,unknown,Chain,Palladium/Fiesta,[verify],[verify],[verify],Prospect,Low,Web research,Chain - corporate IT. Deprioritize.
+Boutique Hotel Sant Roc & Spa,Boutique hotel + spa,Mahon,yes,Boutique / spa,Independent,[verify],[verify],[verify],Prospect,High,Web research,Carrer de Sant Roc. Independent boutique WITH spa - top ICP fit (Guida + spa automation fit).
+El Consul Mao - Hotel Boutique,Boutique hotel,Mahon,no,Boutique,Independent,[verify],[verify],[verify],Prospect,High,Web research,Small independent boutique, central Mahon. Strong fit.
+Can Alberti 1740 Boutique Hotel,Boutique hotel,Mahon,no,Boutique / heritage,Independent,[verify],[verify],[verify],Prospect,High,Web research,Heritage boutique. Independent - strong fit.
+Hotel Hevresac Singular & Small,Boutique hotel,Mahon,no,Boutique / small,Independent,[verify],[verify],[verify],Prospect,High,Web research,Small boutique. Independent - strong fit.
+Bordoy Casa Ladico - Adults Only,Boutique hotel,Mahon,no,Boutique / adults-only,Bordoy,[verify],[verify],[verify],Prospect,Medium,Web research,Top-rated boutique. Confirm if independent or small chain.
+Sindic Hotel - Adults Only,Boutique hotel,Mahon,no,Boutique / adults-only,Independent,[verify],[verify],[verify],Prospect,High,Web research,Adults-only boutique on Mahon harbour. Good fit.
+Hotel Casa Miranda - Adults Only,Boutique hotel,Mahon,no,Boutique / adults-only,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,Adults-only boutique, Placa de la Miranda.
+Can Roca Nou,Hotel,Mahon,no,Mid,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,Independent. C/ Carmen 39.
+Hotel San Miguel Menorca,Hotel,Mahon,no,Small,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,Small independent near Mahon Port.
+ARTIEM Capri,Hotel + spa,Mahon,yes,4-star / chain,ARTIEM (Menorca group),https://www.artiemhotels.com,+34 971 36 14 00,[verify],Prospect,Medium,Web research,Le Petit Spa on rooftop. Menorca BCorp group - some central IT.
+Catalonia Mirador des Port,Hotel,Mahon,no,Chain,Catalonia,[verify],[verify],[verify],Prospect,Low,Web research,Catalonia chain - corporate IT. Deprioritize.
+Senator Port Mahon,Hotel,Mahon,no,Chain,Playa Senator,[verify],[verify],[verify],Prospect,Low,Web research,Playa Senator chain. Deprioritize.
+Insotel Punta Prima Resort & Spa,Resort + spa,Punta Prima (Sant Lluis),yes,All-inclusive / chain,Insotel,https://www.insotelhotelgroup.com,+34 971 159 200,[verify],Prospect,Low,Web research,Large all-inclusive, Prestige Spa. Insotel chain - corporate IT. Low but note spa scale.
+Insotel Punta Prima Prestige Suites & Spa,Hotel + spa,Punta Prima (Sant Lluis),yes,5-star / chain,Insotel,https://www.insotelpuntaprimaprestige.com,[verify],[verify],Prospect,Low,Web research,62 suites, Prestige Spa. Insotel chain. Deprioritize.
+Seth Punta Prima,Hotel + spa,Punta Prima (Sant Lluis),yes,Mid / spa,Independent,[verify],[verify],[verify],Prospect,Medium,Web research,Has spa. Confirm ownership - possible independent spa-tech fit.
+Menorca Binibeca by Pierre & Vacances,Hotel,Binibeca (Sant Lluis),no,Adults-only / chain,Pierre & Vacances,[verify],[verify],[verify],Prospect,Low,Web research,Chain - corporate IT. Deprioritize.

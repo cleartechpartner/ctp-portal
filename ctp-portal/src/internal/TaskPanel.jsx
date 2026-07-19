@@ -142,9 +142,10 @@ function previewKind(name) {
 }
 
 // Multi-select staff picker, used for assignees in the add form and the
-// task panel. Works like a dropdown: button shows the selection, the
-// popover lists every staff member with a checkbox.
-function AssigneePicker({ staff, value, onChange, placeholder, avatarMode }) {
+// task panel, and reused by the Prospect CRM for its assigned_to field.
+// Works like a dropdown: button shows the selection, the popover lists
+// every staff member with a checkbox.
+export function AssigneePicker({ staff, value, onChange, placeholder, avatarMode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 

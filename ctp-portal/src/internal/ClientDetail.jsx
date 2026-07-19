@@ -3,7 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { translate, notify, inviteClient, signedUrl, fmtBytes, monthLabel } from '../lib/api';
 import { PROPOSAL_STATUS, proposalNumber, fmtMoney, computeTotals, isProposalDoc, openProposalDoc } from '../lib/proposals';
+import { fetchStaff } from '../lib/tasks';
 import TaskPanel from './TaskPanel';
+import ProspectDetailCard from './ProspectDetailCard';
 
 const PROJECT_TYPES = ['AI guest agents', 'Systems and integrations', 'Consulting and operations', 'Other'];
 const PROJECT_STATUS = ['planned', 'in_progress', 'live', 'paused', 'complete'];
@@ -29,7 +31,9 @@ const IconEdit = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="non
 
 export default function ClientDetail({ profile }) {
   const { id } = useParams();
+  const nav = useNavigate();
   const [client, setClient] = useState(null);
+  const [staff, setStaff] = useState([]);
   const [tab, setTab] = useState('overview');
   const [toastMsg, setToastMsg] = useState('');
   const toast = useCallback((m) => { setToastMsg(m); setTimeout(() => setToastMsg(''), 2400); }, []);
@@ -40,40 +44,56 @@ export default function ClientDetail({ profile }) {
   };
   useEffect(() => { loadClient(); }, [id]);
 
+  useEffect(() => {
+    (async () => {
+      try { setStaff(await fetchStaff()); } catch { setStaff([]); }
+    })();
+  }, []);
+
   if (!client) return <div className="center"><div className="sp" /></div>;
 
+  const isProspect = client.client_status === 'prospect';
+
+  // One detail page for every client: the enriched CRM card on top.
+  // Prospects follow with their proposals and the Convert flow; Active
+  // clients follow with the full engagement tabs instead.
   return (
     <div className="page">
-      <div className="page-h">
-        <Link to="/" className="link-btn">&larr; All clients</Link>
-        <div className="spread mt">
-          <div>
-            <h1>{client.name}</h1>
-            <p>{client.property_type} · {client.contact_name || 'No contact yet'}</p>
-          </div>
-          <div className="row">
-            <span className={`chip ${client.language}`}>{client.language === 'es' ? 'Portal in Spanish' : 'Portal in English'}</span>
-            {client.client_status === 'prospect'
-              ? <span className="co-pill st-prospect">Prospect</span>
-              : <span className={`chip ${client.status}`}>{STATUS_LABELS[client.status] || client.status}</span>}
-          </div>
+      <Link to="/" className="link-btn">&larr; Overview</Link>
+
+      <div className="mt">
+        <ProspectDetailCard
+          client={client}
+          myProfile={profile}
+          staff={staff}
+          onChanged={loadClient}
+          toast={toast}
+          nav={nav}
+        />
+      </div>
+
+      {isProspect ? (
+        <div className="mt2">
+          <ProspectProposals client={client} onConverted={loadClient} toast={toast} />
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="tabs mt2">
+            {['overview', 'tasks', 'reports', 'updates', 'documents', 'access'].map(x => (
+              <button key={x} className={'tab' + (tab === x ? ' on' : '')} onClick={() => setTab(x)}>
+                {x[0].toUpperCase() + x.slice(1)}
+              </button>
+            ))}
+          </div>
 
-      <div className="tabs">
-        {['overview', 'tasks', 'reports', 'updates', 'documents', 'access'].map(x => (
-          <button key={x} className={'tab' + (tab === x ? ' on' : '')} onClick={() => setTab(x)}>
-            {x[0].toUpperCase() + x.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'overview' && <Overview client={client} onSaved={loadClient} toast={toast} />}
-      {tab === 'tasks' && <TaskPanel profile={profile} fixedClientId={client.id} />}
-      {tab === 'reports' && <ReportsTab client={client} toast={toast} />}
-      {tab === 'updates' && <UpdatesTab client={client} toast={toast} />}
-      {tab === 'documents' && <DocumentsTab client={client} toast={toast} />}
-      {tab === 'access' && <AccessTab client={client} toast={toast} />}
+          {tab === 'overview' && <Overview client={client} onSaved={loadClient} toast={toast} />}
+          {tab === 'tasks' && <TaskPanel profile={profile} fixedClientId={client.id} />}
+          {tab === 'reports' && <ReportsTab client={client} toast={toast} />}
+          {tab === 'updates' && <UpdatesTab client={client} toast={toast} />}
+          {tab === 'documents' && <DocumentsTab client={client} toast={toast} />}
+          {tab === 'access' && <AccessTab client={client} toast={toast} />}
+        </>
+      )}
 
       {toastMsg && <div className="tst">{toastMsg}</div>}
     </div>
