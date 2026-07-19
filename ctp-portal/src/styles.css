@@ -989,11 +989,12 @@ img.tm-avatar{object-fit:cover;background:var(--bg)}
 .tt-kpi{padding:18px 20px}
 .tt-kpi-stack div{line-height:1.3}
 
-/* ===== Final polish: chart rasterization for Export PDF ===== */
-.ov-chart-print{display:none}
+/* ===== Export PDF: full-page capture ===== */
+.ov-print-shot{display:none}
 @media print{
-  .ov-chart-print{display:block;width:100%;height:auto}
-  .ov-chart-live{display:none!important}
+  body.ov-capture-print .page > :not(.ov-print-head):not(.ov-print-shot){display:none!important}
+  body.ov-capture-print .ov-print-shot{display:block}
+  body.ov-capture-print .ov-print-shot img{width:100%;height:auto}
 }
 
 /* ===== Final polish: slideover complete control ===== */

@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList,
   PieChart, Pie
 } from 'recharts';
+import html2canvas from 'html2canvas-pro';
 import { supabase } from '../lib/supabase';
 import { PROPOSAL_STATUS } from '../lib/proposals';
 import { BOARD_STAGES, stageOf, timeAgoShort } from '../lib/prospects';
@@ -112,46 +113,46 @@ export default function Overview() {
     return () => { dead = true; };
   }, []);
 
-  // Print-to-PDF snapshot. Print engines are unreliable with recharts SVG,
-  // so every chart is rasterized to a PNG at 2x and swapped in for the
-  // print run, then the live charts come back.
+  // Print-to-PDF snapshot: html2canvas captures the whole dashboard exactly
+  // as rendered, the capture goes into a print-only container, and the print
+  // stylesheet shows only the branded header plus that image. What you see
+  // on screen is what prints, charts included.
+  const [exporting, setExporting] = useState(false);
   const exportPdf = async () => {
-    const cleanups = [];
-    await Promise.all([...document.querySelectorAll('.recharts-wrapper')].map(async (wrap) => {
-      const svg = wrap.querySelector('svg');
-      if (!svg) return;
-      const w = svg.clientWidth || Number(svg.getAttribute('width')) || 600;
-      const h = svg.clientHeight || Number(svg.getAttribute('height')) || 200;
-      const clone = svg.cloneNode(true);
-      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      clone.setAttribute('width', w);
-      clone.setAttribute('height', h);
-      if (!clone.getAttribute('viewBox')) clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
-      clone.style.fontFamily = getComputedStyle(document.body).fontFamily;
-      const img = new Image();
-      await new Promise(res => {
-        img.onload = res;
-        img.onerror = res;
-        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
-      });
-      const canvas = document.createElement('canvas');
-      canvas.width = w * 2;
-      canvas.height = h * 2;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(2, 2);
-      try { ctx.drawImage(img, 0, 0, w, h); } catch { return; }
-      const still = new Image();
-      still.src = canvas.toDataURL('image/png');
-      still.className = 'ov-chart-print';
-      wrap.classList.add('ov-chart-live');
-      wrap.parentNode.insertBefore(still, wrap.nextSibling);
-      cleanups.push(() => { still.remove(); wrap.classList.remove('ov-chart-live'); });
-    }));
+    const page = document.querySelector('.page');
+    if (!page || exporting) return;
+    setExporting(true);
+    let shot = null;
     let cleaned = false;
-    const done = () => { if (cleaned) return; cleaned = true; cleanups.forEach(fn => fn()); window.removeEventListener('afterprint', done); };
-    window.addEventListener('afterprint', done);
-    window.print();
-    setTimeout(done, 500);
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      document.body.classList.remove('ov-capture-print');
+      if (shot) shot.remove();
+      window.removeEventListener('afterprint', cleanup);
+      setExporting(false);
+    };
+    try {
+      const canvas = await html2canvas(page, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        ignoreElements: (el) => !!el.classList && (el.classList.contains('co-actions') || el.classList.contains('ov-print-shot'))
+      });
+      const img = new Image();
+      img.src = canvas.toDataURL('image/png');
+      shot = document.createElement('div');
+      shot.className = 'ov-print-shot';
+      shot.appendChild(img);
+      page.appendChild(shot);
+      await new Promise(res => { img.onload = res; img.onerror = res; });
+      document.body.classList.add('ov-capture-print');
+      window.addEventListener('afterprint', cleanup);
+      window.print();
+      setTimeout(cleanup, 2000);
+    } catch {
+      cleanup();
+    }
   };
 
   return (
@@ -169,7 +170,9 @@ export default function Overview() {
           <p className="sub">The whole business at a glance.</p>
         </div>
         <div className="co-actions">
-          <button className="btn sm gh" onClick={exportPdf} disabled={!data}>Export PDF</button>
+          <button className="btn sm gh" onClick={exportPdf} disabled={!data || exporting}>
+            {exporting ? 'Preparing…' : 'Export PDF'}
+          </button>
         </div>
       </div>
 

@@ -53,7 +53,7 @@ export default function Sign() {
   return (
     <div className="page">
       <div className="spread" style={{ marginBottom: 14 }}>
-        <span />
+        <h1>Contracts</h1>
         <button className="btn sm" onClick={() => nav('/sign/new')}>+ New document</button>
       </div>
 
