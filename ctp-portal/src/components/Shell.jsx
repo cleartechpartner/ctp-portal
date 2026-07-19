@@ -46,18 +46,21 @@ export default function Shell({ profile, internal, clientLinks, children }) {
   const { t } = useLang();
   const location = useLocation();
   const onStudio = location.pathname.startsWith('/studio');
+  const isAlso = (n) => (n.also || []).some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || null);
   const accountProfile = { ...profile, avatar_url: avatarUrl };
 
+  // Exactly five internal items, fixed order. "also" lists route prefixes that
+  // belong to the section but live outside its path (detail pages, old URLs),
+  // so the section stays highlighted while you are inside it.
   const nav = internal
     ? [
         { to: '/', label: 'Overview', end: true },
+        { to: '/crm', label: 'CRM', also: ['/clients'] },
         { to: '/studio', label: 'Content Studio', end: true },
-        { to: '/sign', label: 'E-Signature' },
-        { to: '/proposals', label: 'Proposals' },
-        { to: '/tasks', label: 'Tasks' },
-        { to: '/time', label: 'Time' }
+        { to: '/paperwork', label: 'Paperwork', also: ['/sign', '/proposals'] },
+        { to: '/work', label: 'Work', also: ['/tasks', '/time'] }
       ]
     : [
         { to: '/', label: t('navHome'), end: true },
@@ -77,7 +80,7 @@ export default function Shell({ profile, internal, clientLinks, children }) {
         {!internal && <ClientSwitch profile={profile} clientLinks={clientLinks} />}
         <nav>
           {nav.map(n => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nv' + (isActive ? ' on' : '')}>
+            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nv' + (isActive || isAlso(n) ? ' on' : '')}>
               {n.label}
             </NavLink>
           ))}
@@ -133,7 +136,7 @@ export default function Shell({ profile, internal, clientLinks, children }) {
         </div>
         <div className="mobnav">
           {nav.map(n => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nv' + (isActive ? ' on' : '')}>
+            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => 'nv' + (isActive || isAlso(n) ? ' on' : '')}>
               {n.label}
             </NavLink>
           ))}

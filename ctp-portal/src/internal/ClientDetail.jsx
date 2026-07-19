@@ -59,7 +59,7 @@ export default function ClientDetail({ profile }) {
   // clients follow with the full engagement tabs instead.
   return (
     <div className="page">
-      <Link to="/" className="link-btn">&larr; Overview</Link>
+      <Link to="/crm" className="link-btn">&larr; CRM</Link>
 
       <div className="mt">
         <ProspectDetailCard

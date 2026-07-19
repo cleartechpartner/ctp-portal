@@ -198,7 +198,7 @@ export default function InternalHome() {
       {/* Header */}
       <div className="co-header">
         <div>
-          <h1>Overview</h1>
+          <h1>CRM</h1>
           <p className="sub">All engagements and their status.</p>
         </div>
         <div className="co-actions">
