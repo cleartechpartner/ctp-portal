@@ -23,6 +23,7 @@ import SignerView from './sign/SignerView';
 import Proposals from './internal/Proposals';
 import ProposalEditor from './internal/ProposalEditor';
 import ProposalSignView from './sign/ProposalSignView';
+import Prospects from './internal/Prospects';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading
@@ -135,6 +136,7 @@ export default function App() {
               <Route path="/proposals" element={<Proposals />} />
               <Route path="/proposals/new" element={<ProposalEditor />} />
               <Route path="/proposals/:id" element={<ProposalEditor />} />
+              <Route path="/prospects" element={<Prospects />} />
               <Route path="/tasks" element={<Tasks profile={profile} />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
