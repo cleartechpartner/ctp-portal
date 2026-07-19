@@ -153,7 +153,7 @@ exception when duplicate_object then null; end $$;
 -- interactions; this trigger only writes 'proposal' ones.
 
 create or replace function public.proposals_crm_sync() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_number text;
   v_is_prospect boolean;
