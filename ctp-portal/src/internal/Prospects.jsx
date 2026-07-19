@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import Avatar from '../components/Avatar';
 import { fetchStaff } from '../lib/tasks';
 import {
-  STAGES, PRIORITIES, STAGE_CLS, PRIORITY_CLS, PRIORITY_SHORT, LOG_KINDS,
+  STAGES, BOARD_STAGES, PRIORITIES, STAGE_CLS, PRIORITY_CLS, PRIORITY_SHORT, LOG_KINDS,
   stageOf, priorityOf, companyInitials, townOf, timeAgoShort,
   lastContact, lastActivityPhrase, latestInteraction, fetchProspects, changeStage,
 } from '../lib/prospects';
@@ -23,13 +22,21 @@ export default function Prospects() {
   const [prospects, setProspects] = useState(null);
   const [err, setErr] = useState('');
   const [view, setView] = useState(() => {
-    try { return localStorage.getItem('ctp-prospect-view') || 'table'; } catch { return 'table'; }
+    try { return localStorage.getItem('ctp-prospect-view') || 'board'; } catch { return 'board'; }
   });
   const [selectedId, setSelectedId] = useState(null);
   const [myProfile, setMyProfile] = useState(null);
   const [staff, setStaff] = useState([]);
   const [toastMsg, setToastMsg] = useState('');
   const toast = useCallback((m) => { setToastMsg(m); setTimeout(() => setToastMsg(''), 2400); }, []);
+
+  // Filters, shared by every view.
+  const [search, setSearch] = useState('');
+  const [townSel, setTownSel] = useState([]);
+  const [prioFilter, setPrioFilter] = useState('all');
+  const [stageFilter, setStageFilter] = useState('all');
+  const [independentOnly, setIndependentOnly] = useState(false);
+  const [showLost, setShowLost] = useState(false);
 
   const load = useCallback(async () => {
     try { setProspects(await fetchProspects()); }
@@ -55,8 +62,34 @@ export default function Prospects() {
 
   const openDetail = (id) => { setSelectedId(id); switchView('split'); };
 
+  const towns = useMemo(() => {
+    const set = new Set();
+    (prospects || []).forEach(p => { const t = townOf(p.locality); if (t) set.add(t); });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [prospects]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (prospects || []).filter(p => {
+      if (townSel.length && !townSel.includes(townOf(p.locality))) return false;
+      if (prioFilter !== 'all' && priorityOf(p) !== prioFilter) return false;
+      if (stageFilter !== 'all' && stageOf(p) !== stageFilter) return false;
+      if (independentOnly && (p.ownership || '').trim().toLowerCase() !== 'independent') return false;
+      if (q) {
+        const hay = [
+          p.name, p.locality, p.segment, p.ownership, p.partner_notes, p.next_step,
+          ...(p.contacts || []).flatMap(c => [c.full_name, c.email, c.role]),
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [prospects, search, townSel, prioFilter, stageFilter, independentOnly]);
+
   if (!prospects) return <div className="pr-fill"><div className="center"><div className="sp" /></div></div>;
 
+  const toggleTown = (t) => setTownSel(sel => sel.includes(t) ? sel.filter(x => x !== t) : [...sel, t]);
+  const lostCount = prospects.filter(p => stageOf(p) === 'Lost').length;
   const highUntouched = prospects.filter(p => priorityOf(p) === 'High' && !lastContact(p.interactions)).length;
 
   return (
@@ -71,8 +104,13 @@ export default function Prospects() {
             </div>
           </div>
           <div className="pr-head-actions">
+            {view === 'board' && (
+              <button className={'pr-chip' + (showLost ? ' on' : '')} onClick={() => setShowLost(v => !v)}>
+                Show lost{lostCount ? ` (${lostCount})` : ''}
+              </button>
+            )}
             <div className="pr-toggle">
-              {[['table', 'Table'], ['split', 'Split']].map(([v, l]) => (
+              {[['board', 'Board'], ['table', 'Table'], ['split', 'Split']].map(([v, l]) => (
                 <button key={v} className={view === v ? 'on' : ''} onClick={() => switchView(v)}>{l}</button>
               ))}
             </div>
@@ -81,17 +119,63 @@ export default function Prospects() {
 
         {err && <div className="auth-err">{err}</div>}
 
+        {prospects.length > 0 && (
+          <div className="pr-controls">
+            <div className="pr-search">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                placeholder="Search prospects, contacts, notes"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                aria-label="Search prospects"
+              />
+            </div>
+            <div className="pr-chips">
+              <button className={'pr-chip' + (townSel.length === 0 ? ' on' : '')} onClick={() => setTownSel([])}>All localities</button>
+              {towns.map(t => (
+                <button key={t} className={'pr-chip' + (townSel.includes(t) ? ' on' : '')} onClick={() => toggleTown(t)}>{t}</button>
+              ))}
+              <button className={'pr-chip' + (independentOnly ? ' on' : '')} onClick={() => setIndependentOnly(v => !v)}>Independent only</button>
+              <select className="pr-fsel" value={prioFilter} onChange={e => setPrioFilter(e.target.value)} aria-label="Priority filter">
+                <option value="all">All priorities</option>
+                {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select className="pr-fsel" value={stageFilter} onChange={e => setStageFilter(e.target.value)} aria-label="Stage filter">
+                <option value="all">All stages</option>
+                {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
         {prospects.length === 0 && (
           <div className="pr-empty-card">No prospects yet. Create one in Client Overview with status Prospect, or import a CSV.</div>
         )}
-
-        {prospects.length > 0 && view === 'table' && (
-          <TableView prospects={prospects} staff={staff} onOpen={openDetail} />
+        {prospects.length > 0 && filtered.length === 0 && (
+          <div className="pr-empty-card">No prospects match the filters.</div>
         )}
 
-        {prospects.length > 0 && view === 'split' && (
+        {filtered.length > 0 && view === 'board' && (
+          <BoardView
+            prospects={filtered}
+            staff={staff}
+            myProfile={myProfile}
+            showLost={showLost}
+            onOpen={openDetail}
+            onChanged={load}
+            toast={toast}
+          />
+        )}
+
+        {filtered.length > 0 && view === 'table' && (
+          <TableView prospects={filtered} staff={staff} onOpen={openDetail} />
+        )}
+
+        {filtered.length > 0 && view === 'split' && (
           <SplitView
-            prospects={prospects}
+            prospects={filtered}
             selectedId={selectedId}
             onSelect={setSelectedId}
             myProfile={myProfile}
@@ -154,6 +238,138 @@ function ownerOf(prospect, staff) {
   const latest = latestInteraction(prospect.interactions);
   if (!latest?.created_by) return null;
   return staff.find(s => s.id === latest.created_by) || null;
+}
+
+function OwnerAvatar({ profile, size = 22 }) {
+  if (!profile) return null;
+  const name = profile.full_name || profile.email?.split('@')[0] || '';
+  if (profile.avatar_url) {
+    return <img className="pr-av-img" src={profile.avatar_url} alt={name} title={name} style={{ width: size, height: size }} />;
+  }
+  return (
+    <span className="pr-av" title={name} style={size !== 22 ? { width: size, height: size } : undefined}>
+      {companyInitials(name)}
+    </span>
+  );
+}
+
+/* ---------- Board view ---------- */
+
+const PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 };
+const byPriorityThenName = (a, b) =>
+  (PRIORITY_RANK[priorityOf(a)] - PRIORITY_RANK[priorityOf(b)]) || a.name.localeCompare(b.name);
+
+function BoardView({ prospects, staff, myProfile, showLost, onOpen, onChanged, toast }) {
+  const [dragId, setDragId] = useState(null);
+  const [overCol, setOverCol] = useState(null);
+  const cols = showLost ? [...BOARD_STAGES, 'Lost'] : BOARD_STAGES;
+
+  const moveTo = async (prospect, stage) => {
+    if (stageOf(prospect) === stage) return;
+    try {
+      await changeStage(prospect, stage, myProfile?.id);
+      toast('Moved to ' + stage);
+      onChanged();
+    } catch (e) { toast('Stage change failed: ' + e.message); }
+  };
+
+  const drop = (stage) => {
+    const p = prospects.find(x => x.id === dragId);
+    setOverCol(null);
+    setDragId(null);
+    if (p) moveTo(p, stage);
+  };
+
+  return (
+    <div className={'pr-board' + (cols.length === 6 ? ' cols-6' : '')}>
+      {cols.map(stage => {
+        const cards = prospects.filter(p => stageOf(p) === stage).sort(byPriorityThenName);
+        return (
+          <div key={stage}>
+            <div className="pr-col-head">
+              <span className="name">{stage}</span>
+              <span className="count">{cards.length}</span>
+            </div>
+            <div
+              className={'pr-col-body' + (overCol === stage ? ' over' : '')}
+              onDragOver={e => { e.preventDefault(); if (overCol !== stage) setOverCol(stage); }}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOverCol(c => c === stage ? null : c); }}
+              onDrop={e => { e.preventDefault(); drop(stage); }}
+            >
+              {cards.map(p => (
+                <BoardCard
+                  key={p.id}
+                  prospect={p}
+                  owner={ownerOf(p, staff)}
+                  dragging={dragId === p.id}
+                  onDragStart={() => setDragId(p.id)}
+                  onDragEnd={() => { setDragId(null); setOverCol(null); }}
+                  onOpen={() => onOpen(p.id)}
+                  onMove={(s) => moveTo(p, s)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BoardCard({ prospect, owner, dragging, onDragStart, onDragEnd, onOpen, onMove }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const stage = stageOf(prospect);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('click', close); document.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
+
+  return (
+    <div
+      className={'pr-card' + (dragging ? ' dragging' : '') + (stage === 'Won' ? ' won' : '')}
+      draggable
+      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
+      onDragEnd={onDragEnd}
+      onClick={onOpen}
+    >
+      <div className="pr-card-menu" onClick={e => e.stopPropagation()}>
+        <button
+          className="pr-card-menu-btn"
+          onClick={() => setMenuOpen(o => !o)}
+          title="Move to stage"
+          aria-label={'Move ' + prospect.name + ' to stage'}
+          aria-expanded={menuOpen}
+        >&#8942;</button>
+        {menuOpen && (
+          <div className="pr-card-pop">
+            <div className="lab">Move to</div>
+            {STAGES.map(s => (
+              <button key={s} className={s === stage ? 'cur' : ''} onClick={() => { setMenuOpen(false); onMove(s); }}>
+                {s}{s === stage ? ' ·' : ''}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginBottom: 6 }}>
+        <CompanyLogo prospect={prospect} size={26} />
+        <div className="co" style={{ marginBottom: 0 }}>{prospect.name}</div>
+      </div>
+      <div className="loc">{[townOf(prospect.locality), prospect.segment].filter(Boolean).join(' · ')}</div>
+      <PriorityPill value={priorityOf(prospect)} />
+      <div className="foot">
+        <div className="pr-avs">{owner && <OwnerAvatar profile={owner} />}</div>
+        <span className="act">
+          {stage === 'Won' ? 'signed · convert' : lastActivityPhrase(prospect.interactions)}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 /* ---------- Table view ---------- */
@@ -342,7 +558,7 @@ function ProspectDetail({ prospect, myProfile, staff, onChanged, toast, nav }) {
         <div className="pr-fact">
           <div className="k">Owner</div>
           <div className="v">
-            {owner ? <><Avatar profile={owner} size={20} /> {owner.full_name || owner.email?.split('@')[0]}</> : '-'}
+            {owner ? <><OwnerAvatar profile={owner} size={20} /> {owner.full_name || owner.email?.split('@')[0]}</> : '-'}
           </div>
         </div>
         <div className="pr-fact">
