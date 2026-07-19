@@ -13,7 +13,7 @@ import {
 // Standalone it is the /prospects page; embedded it renders inside the
 // merged Overview page under the Prospects filter.
 
-export default function Prospects({ embedded = false, refreshKey = 0 }) {
+export default function Prospects({ embedded = false, refreshKey = 0, initialStage = null }) {
   const nav = useNavigate();
   const [prospects, setProspects] = useState(null);
   const [err, setErr] = useState('');
@@ -30,7 +30,8 @@ export default function Prospects({ embedded = false, refreshKey = 0 }) {
   const [search, setSearch] = useState('');
   const [townSel, setTownSel] = useState([]);
   const [prioFilter, setPrioFilter] = useState('all');
-  const [stageFilter, setStageFilter] = useState('all');
+  // The Overview funnel deep-links here with ?stage=X via initialStage.
+  const [stageFilter, setStageFilter] = useState(STAGES.includes(initialStage) ? initialStage : 'all');
   const [assignedFilter, setAssignedFilter] = useState('all');
   const [independentOnly, setIndependentOnly] = useState(false);
   const [showLost, setShowLost] = useState(false);

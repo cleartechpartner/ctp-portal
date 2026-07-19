@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Prospects from './Prospects';
 import NewProspectModal from './NewProspectModal';
@@ -67,7 +67,11 @@ export default function InternalHome() {
   const [form, setForm] = useState(blankForm);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [statusFilter, setStatusFilter] = useState('active'); // all | active | prospect
+  // ?stage=X (from the Overview funnel) lands straight on the prospect
+  // pipeline with that stage pre-filtered.
+  const [searchParams] = useSearchParams();
+  const stageParam = searchParams.get('stage');
+  const [statusFilter, setStatusFilter] = useState(stageParam ? 'prospect' : 'active'); // all | active | prospect
   const [view, setView] = useState(() => {
     try { return localStorage.getItem('ctp-client-view') || 'grid'; } catch { return 'grid'; }
   });
@@ -301,7 +305,7 @@ export default function InternalHome() {
 
       {/* Prospect pipeline (board / table / split), embedded */}
       {statusFilter === 'prospect' && (
-        <Prospects embedded refreshKey={prospectRefresh} />
+        <Prospects key={stageParam || 'all'} embedded refreshKey={prospectRefresh} initialStage={stageParam} />
       )}
 
       {/* Empty state */}
