@@ -52,11 +52,9 @@ export default function Sign() {
 
   return (
     <div className="page">
-      <div className="co-header">
-        <div />
-        <div className="co-actions">
-          <button className="btn" onClick={() => nav('/sign/new')}>+ New document</button>
-        </div>
+      <div className="spread" style={{ marginBottom: 14 }}>
+        <span />
+        <button className="btn sm" onClick={() => nav('/sign/new')}>+ New document</button>
       </div>
 
       <div className="es-tabs">

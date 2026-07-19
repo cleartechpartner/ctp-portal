@@ -295,7 +295,7 @@ export default function InternalHome() {
       {/* All / Active / Prospects filter */}
       {clients.length > 0 && (
         <div className="doc-filters" style={{ marginBottom: 16 }}>
-          {[['all', 'All', clients.length], ['active', 'Active', clients.length - prospectCount], ['prospect', 'Prospects', prospectCount]].map(([v, l, count]) => (
+          {[['active', 'Active', clients.length - prospectCount], ['prospect', 'Prospects', prospectCount], ['all', 'All', clients.length]].map(([v, l, count]) => (
             <button key={v} className={`filter-chip${statusFilter === v ? ' on' : ''}`} onClick={() => setStatusFilter(v)}>
               {l}<span className="filter-count">{count}</span>
             </button>

@@ -112,16 +112,46 @@ export default function Overview() {
     return () => { dead = true; };
   }, []);
 
-  // Print-to-PDF snapshot. Recharts SVGs get a viewBox first so they scale
-  // to the paper width instead of clipping.
-  const exportPdf = () => {
-    document.querySelectorAll('.recharts-wrapper svg').forEach(svg => {
-      if (!svg.getAttribute('viewBox')) {
-        const w = svg.getAttribute('width'), h = svg.getAttribute('height');
-        if (w && h) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-      }
-    });
+  // Print-to-PDF snapshot. Print engines are unreliable with recharts SVG,
+  // so every chart is rasterized to a PNG at 2x and swapped in for the
+  // print run, then the live charts come back.
+  const exportPdf = async () => {
+    const cleanups = [];
+    await Promise.all([...document.querySelectorAll('.recharts-wrapper')].map(async (wrap) => {
+      const svg = wrap.querySelector('svg');
+      if (!svg) return;
+      const w = svg.clientWidth || Number(svg.getAttribute('width')) || 600;
+      const h = svg.clientHeight || Number(svg.getAttribute('height')) || 200;
+      const clone = svg.cloneNode(true);
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      clone.setAttribute('width', w);
+      clone.setAttribute('height', h);
+      if (!clone.getAttribute('viewBox')) clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      clone.style.fontFamily = getComputedStyle(document.body).fontFamily;
+      const img = new Image();
+      await new Promise(res => {
+        img.onload = res;
+        img.onerror = res;
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = w * 2;
+      canvas.height = h * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
+      try { ctx.drawImage(img, 0, 0, w, h); } catch { return; }
+      const still = new Image();
+      still.src = canvas.toDataURL('image/png');
+      still.className = 'ov-chart-print';
+      wrap.classList.add('ov-chart-live');
+      wrap.parentNode.insertBefore(still, wrap.nextSibling);
+      cleanups.push(() => { still.remove(); wrap.classList.remove('ov-chart-live'); });
+    }));
+    let cleaned = false;
+    const done = () => { if (cleaned) return; cleaned = true; cleanups.forEach(fn => fn()); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
     window.print();
+    setTimeout(done, 500);
   };
 
   return (
@@ -491,11 +521,9 @@ function FeedCard({ interactions }) {
             <li key={i.id}>
               <Link to={`/clients/${i.client_id}`}>
                 <Avatar profile={i.creator} size={26} />
-                <span className="what">
-                  <b>{i.clients?.name || 'Client'}</b>
-                  {' '}<span style={{ color: 'var(--dim)' }}>{KIND_LABEL[i.kind] || i.kind}</span>
-                  {' '}{i.title}
-                </span>
+                <b className="ov-fc-client">{i.clients?.name || 'Client'}</b>
+                <span className="chip ov-fc-kind">{KIND_LABEL[i.kind] || i.kind}</span>
+                <span className="ov-fc-desc">{i.title}</span>
                 <span className="when">{timeAgoShort(i.occurred_at)}</span>
               </Link>
             </li>

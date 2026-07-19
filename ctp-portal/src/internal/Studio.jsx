@@ -513,16 +513,6 @@ export default function Studio(){
             </div>
           </div>
         ))}
-        <div className="doc">
-          <span className="eyebrow">Operating doctrine</span>
-          <ol>
-            <li><b>Read everything before you publish.</b> The studio drafts — you decide.</li>
-            <li><b>One pillar per piece.</b> If it fits two, it's unfocused.</li>
-            <li><b>Rhythm beats volume.</b> 2 blog posts a month. Consistent LinkedIn.</li>
-            <li><b>Never publish an unverified number.</b></li>
-            <li><b>Every client story gets owner approval first.</b></li>
-          </ol>
-        </div>
       </>)}
 
       {view==='mod'&&mod&&(<>

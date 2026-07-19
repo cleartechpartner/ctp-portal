@@ -23,14 +23,9 @@ export default function Proposals() {
 
   return (
     <div className="page">
-      <div className="co-header">
-        <div>
-          <h1>Proposals</h1>
-          <p className="sub">Every proposal across all prospects, from draft to signed.</p>
-        </div>
-        <div className="co-actions">
-          <button className="btn" onClick={() => nav('/proposals/new')}>+ New Proposal</button>
-        </div>
+      <div className="spread" style={{ marginBottom: 14 }}>
+        <h1>Proposals</h1>
+        <button className="btn sm" onClick={() => nav('/proposals/new')}>+ New Proposal</button>
       </div>
 
       {isAdmin && (

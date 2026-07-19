@@ -69,7 +69,7 @@ const CELEBRATIONS = [
 
 // Calendar: Day / Week / Month, same segmented-toggle pattern as the Time
 // page timesheet. Monday-start weeks, tasks sit on their due date's cell.
-function CalendarView({ tasks, onOpen }) {
+function CalendarView({ tasks, onOpen, onToggle }) {
   const [mode, setMode] = useState('month'); // day | week | month
   const [anchor, setAnchor] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
 
@@ -147,6 +147,14 @@ function CalendarView({ tasks, onOpen }) {
           {dayTasks.length === 0 && <div className="empty">Nothing due this day.</div>}
           {dayTasks.map(t => (
             <div key={t.id} className="tm-cal-dayrow">
+              <input
+                type="checkbox"
+                className="tm-done-check"
+                checked={t.status === 'done'}
+                title={t.status === 'done' ? 'Reopen' : 'Mark done'}
+                onChange={() => {}}
+                onClick={(e) => onToggle(t, e)}
+              />
               {taskBtn(t)}
               <span className="sub">{t.clients?.name || 'Internal'}</span>
             </div>
@@ -435,12 +443,12 @@ export default function TaskPanel({ profile, fixedClientId }) {
         <div className="tm-task-main" onClick={() => setExpandedId(t.id)}>
           <div className={'nm' + (t.status === 'done' ? ' tm-done-title' : '')}>{t.title}</div>
           <div className="tm-bubbles">
-            <span className="tm-bubble tm-b-client">{t.clients?.name || 'Internal'}</span>
             <span className="tm-avatars tm-row-avatars" title={assignees.map(staffName).join(', ') || 'Unassigned'}>
               {assignees.length === 0 && <span className="tm-avatar tm-avatar-empty">?</span>}
               {assignees.slice(0, 3).map(a => <Face key={a.id} p={a} />)}
               {assignees.length > 3 && <span className="tm-avatar tm-avatar-empty">+{assignees.length - 3}</span>}
             </span>
+            <span className="tm-bubble tm-b-client">{t.clients?.name || 'Internal'}</span>
             <span className={'tm-bubble ' + (overdue ? 'tm-b-overdue' : 'tm-b-due')}>
               {fmtDue(t.due_date)}{overdue ? ' | overdue' : ''}
             </span>
@@ -557,7 +565,7 @@ export default function TaskPanel({ profile, fixedClientId }) {
         </>
       ) : (
         <div style={{ marginTop: 20 }}>
-          <CalendarView tasks={[...open, ...done]} onOpen={setExpandedId} />
+          <CalendarView tasks={[...open, ...done]} onOpen={setExpandedId} onToggle={toggleDone} />
         </div>
       )}
 
@@ -566,7 +574,19 @@ export default function TaskPanel({ profile, fixedClientId }) {
           <aside className="tm-slideover" onClick={e => e.stopPropagation()}>
             <div className="tm-slideover-head">
               <h3>Task</h3>
-              <button className="icon-btn" title="Close" onClick={() => setExpandedId(null)}>×</button>
+              <div className="row" style={{ gap: 12 }}>
+                <label className="tm-slideover-done">
+                  <input
+                    type="checkbox"
+                    className="tm-done-check"
+                    checked={expandedTask.status === 'done'}
+                    onChange={() => {}}
+                    onClick={(e) => toggleDone(expandedTask, e)}
+                  />
+                  {expandedTask.status === 'done' ? 'Completed' : 'Mark complete'}
+                </label>
+                <button className="icon-btn" title="Close" onClick={() => setExpandedId(null)}>×</button>
+              </div>
             </div>
             <TaskEditor
               key={expandedTask.id}
