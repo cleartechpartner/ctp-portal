@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { fetchStaff } from '../lib/tasks';
+import ProspectImport from './ProspectImport';
 import {
   STAGES, BOARD_STAGES, PRIORITIES, STAGE_CLS, PRIORITY_CLS, PRIORITY_SHORT, LOG_KINDS,
   stageOf, priorityOf, companyInitials, townOf, timeAgoShort,
@@ -37,6 +38,7 @@ export default function Prospects() {
   const [stageFilter, setStageFilter] = useState('all');
   const [independentOnly, setIndependentOnly] = useState(false);
   const [showLost, setShowLost] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     try { setProspects(await fetchProspects()); }
@@ -104,6 +106,7 @@ export default function Prospects() {
             </div>
           </div>
           <div className="pr-head-actions">
+            <button className="pr-btn" onClick={() => setImportOpen(true)}>Import CSV</button>
             {view === 'board' && (
               <button className={'pr-chip' + (showLost ? ' on' : '')} onClick={() => setShowLost(v => !v)}>
                 Show lost{lostCount ? ` (${lostCount})` : ''}
@@ -183,6 +186,15 @@ export default function Prospects() {
             onChanged={load}
             toast={toast}
             nav={nav}
+          />
+        )}
+
+        {importOpen && (
+          <ProspectImport
+            myProfile={myProfile}
+            onClose={() => setImportOpen(false)}
+            onImported={load}
+            toast={toast}
           />
         )}
 
