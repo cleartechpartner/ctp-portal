@@ -23,11 +23,9 @@ export default function Proposals() {
 
   return (
     <div className="page">
-      <div className="co-header">
-        <div>
-          <h1>Proposals</h1>
-          <p className="sub">Every proposal across all prospects, from draft to signed.</p>
-        </div>
+      <div className="spread" style={{ marginBottom: 14 }}>
+        <h1>Proposals</h1>
+        <button className="btn sm" onClick={() => nav('/proposals/new')}>+ New Proposal</button>
       </div>
 
       {isAdmin && (
@@ -48,6 +46,23 @@ function Pipeline({ nav }) {
   const [proposals, setProposals] = useState(null);
   const [filter, setFilter] = useState('all');
   const [err, setErr] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Removes the proposal row (tokens cascade, the signed PDF bytes live in
+  // the row itself) plus the client-Documents entries that point at it.
+  const doDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    const { error } = await supabase.from('proposals').delete().eq('id', deleteTarget.id);
+    if (error) { setErr(error.message); setDeleting(false); return; }
+    const { error: docErr } = await supabase.from('documents').delete()
+      .like('storage_path', `proposal/${deleteTarget.id}/%`);
+    if (docErr) setErr('Proposal deleted, but its Documents entry could not be removed: ' + docErr.message);
+    setProposals(list => (list || []).filter(x => x.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleting(false);
+  };
 
   useEffect(() => {
     (async () => {
@@ -107,10 +122,39 @@ function Pipeline({ nav }) {
                 <span className="co-dot" style={{ background: sc.dot, marginRight: 6 }} />{sc.label}
               </span>
               <span className="es-row-date">{fmtDate(lastDate)}</span>
+              <button
+                className="icon-btn"
+                title="Delete proposal"
+                aria-label={'Delete ' + proposalNumber(p.proposal_number)}
+                onClick={e => { e.stopPropagation(); setDeleteTarget(p); }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" />
+                </svg>
+              </button>
             </div>
           );
         })}
       </div>
+
+      {deleteTarget && (
+        <div className="modal-backdrop" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head"><h3>Delete proposal</h3></div>
+            <p className="sub" style={{ margin: '10px 0 4px' }}>
+              {proposalNumber(deleteTarget.proposal_number)} | {deleteTarget.project_title} for {deleteTarget.clients?.name || 'this client'} will be permanently removed
+              {deleteTarget.status === 'signed' ? ', including the signed PDF and its entry in the client Documents tab' : ''}.
+              This cannot be undone.
+            </p>
+            <div className="modal-foot">
+              <button className="btn sm gh" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
+              <button className="btn sm" style={{ background: 'var(--danger)' }} onClick={doDelete} disabled={deleting}>
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

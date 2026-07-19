@@ -31,7 +31,7 @@ export default function Time() {
         .select('id, title, type, status, client_id, time_cap_hours, time_cap_budget, clients(id, name, status, hourly_rate, time_cap_type, time_cap_value)')
         .order('title'),
       supabase.from('clients')
-        .select('id, name, status, hourly_rate, currency, time_cap_type, time_cap_value')
+        .select('id, name, status, client_status, hourly_rate, currency, time_cap_type, time_cap_value')
         .order('name'),
       supabase.from('tasks').select('id, title, client_id, status').order('created_at', { ascending: false })
     ]);
@@ -77,7 +77,9 @@ export default function Time() {
       {tab === 'summary' && <TimeSummary clients={clients} categories={categories} staff={staff} />}
       {tab === 'clients' && (
         <TimeClients
-          projects={projects} clients={clients} categories={categories}
+          projects={projects}
+          clients={clients.filter(c => c.client_status !== 'prospect')}
+          categories={categories}
           onChanged={load} onCategoriesChanged={loadCategories}
         />
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { LangProvider } from './lib/i18n';
 import Login from './components/Login';
@@ -9,20 +9,26 @@ import InternalHome from './internal/InternalHome';
 import ClientDetail from './internal/ClientDetail';
 import Studio from './internal/Studio';
 import Settings from './internal/Settings';
-import Time from './internal/Time';
-import Tasks from './internal/Tasks';
 import ClientHome from './client/ClientHome';
 import Reports from './client/Reports';
 import Updates from './client/Updates';
 import Documents from './client/Documents';
 import Profile from './client/Profile';
-import Sign from './internal/Sign';
 import SignPrepare from './internal/SignPrepare';
 import SignDetail from './internal/SignDetail';
 import SignerView from './sign/SignerView';
-import Proposals from './internal/Proposals';
 import ProposalEditor from './internal/ProposalEditor';
 import ProposalSignView from './sign/ProposalSignView';
+import Overview from './internal/Overview';
+import Paperwork from './internal/Paperwork';
+import Work from './internal/Work';
+
+// Old bookmarks and email deep links keep working: redirect while carrying
+// the query string and hash along (the Time page tabs live in the hash).
+function Redirect({ to }) {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search, hash: location.hash }} replace />;
+}
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading
@@ -125,19 +131,25 @@ export default function App() {
         ) : profile.role === 'internal' ? (
           <Shell profile={profile} internal>
             <Routes>
-              <Route path="/" element={<InternalHome />} />
+              <Route path="/" element={<Overview />} />
+              <Route path="/crm" element={<InternalHome />} />
               <Route path="/clients/:id" element={<ClientDetail profile={profile} />} />
               <Route path="/studio" element={<Studio />} />
-              <Route path="/time" element={<Time />} />
-              <Route path="/sign" element={<Sign />} />
+              <Route path="/paperwork" element={<Navigate to="/paperwork/contracts" replace />} />
+              <Route path="/paperwork/:tab" element={<Paperwork />} />
+              <Route path="/work" element={<Navigate to="/work/tasks" replace />} />
+              <Route path="/work/:tab" element={<Work profile={profile} />} />
+              {/* E-Signature subpages stay at their old URLs; only the list moved */}
               <Route path="/sign/new" element={<SignPrepare />} />
               <Route path="/sign/:id" element={<SignDetail />} />
-              <Route path="/proposals" element={<Proposals />} />
+              <Route path="/sign" element={<Redirect to="/paperwork/contracts" />} />
+              <Route path="/esign" element={<Redirect to="/paperwork/contracts" />} />
               <Route path="/proposals/new" element={<ProposalEditor />} />
               <Route path="/proposals/:id" element={<ProposalEditor />} />
-              {/* Prospects merged into the Overview home page */}
-              <Route path="/prospects" element={<Navigate to="/" replace />} />
-              <Route path="/tasks" element={<Tasks profile={profile} />} />
+              <Route path="/proposals" element={<Redirect to="/paperwork/proposals" />} />
+              <Route path="/tasks" element={<Redirect to="/work/tasks" />} />
+              <Route path="/time" element={<Redirect to="/work/time" />} />
+              <Route path="/prospects" element={<Redirect to="/crm" />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

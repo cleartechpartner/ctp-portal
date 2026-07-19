@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { staffName } from '../lib/tasks';
-import { dateKey, secToHM, secToDec, entryAmount, fmtAmountsByCurrency } from '../lib/time';
+import { dateKey, secToHM, secToDec, entryAmount, fmtAmountLines } from '../lib/time';
 
 function monthStart() {
   const d = new Date(); d.setDate(1);
@@ -123,7 +123,8 @@ export default function TimeSummary({ clients, categories, staff }) {
       <div className="tt-kpis">
         <div className="card tt-kpi"><div className="tt-kpi-label">Total tracked</div><div className="tt-kpi-value">{secToHM(totalSec)}</div><div className="meta">{secToDec(totalSec)} h</div></div>
         <div className="card tt-kpi"><div className="tt-kpi-label">Clients</div><div className="tt-kpi-value">{byClient.length}</div></div>
-        <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div><div className="tt-kpi-value">{fmtAmountsByCurrency(amountByCurrency)}</div></div>
+        <div className="card tt-kpi"><div className="tt-kpi-label">Billable amount</div>
+          <div className="tt-kpi-value tt-kpi-stack">{fmtAmountLines(amountByCurrency).map(l => <div key={l}>{l}</div>)}</div></div>
       </div>
 
       <div className="grid2" style={{ marginTop: 14, alignItems: 'start' }}>
