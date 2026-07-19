@@ -113,10 +113,12 @@ export default function Overview() {
     return () => { dead = true; };
   }, []);
 
-  // Print-to-PDF snapshot: html2canvas captures the whole dashboard exactly
-  // as rendered, the capture goes into a print-only container, and the print
-  // stylesheet shows only the branded header plus that image. What you see
-  // on screen is what prints, charts included.
+  // Print-to-PDF snapshot: html2canvas captures the whole dashboard, the
+  // capture goes into a print-only container, and the print stylesheet shows
+  // only the branded header plus that image. The page is pinned to the
+  // 1200px desktop layout for the capture (the ov-capture class also outranks
+  // the responsive stacking rules, since those key on viewport width), so
+  // the PDF always shows the full-width desktop grid no matter the screen.
   const [exporting, setExporting] = useState(false);
   const exportPdf = async () => {
     const page = document.querySelector('.page');
@@ -127,18 +129,25 @@ export default function Overview() {
     const cleanup = () => {
       if (cleaned) return;
       cleaned = true;
+      page.classList.remove('ov-capture');
       document.body.classList.remove('ov-capture-print');
       if (shot) shot.remove();
       window.removeEventListener('afterprint', cleanup);
       setExporting(false);
     };
     try {
+      page.classList.add('ov-capture');
+      // ResponsiveContainer needs a beat to re-render every chart at the
+      // forced 1200px width before the snapshot is taken.
+      await new Promise(res => setTimeout(res, 500));
       const canvas = await html2canvas(page, {
         scale: 2,
         useCORS: true,
+        windowWidth: 1240,
         backgroundColor: getComputedStyle(document.body).backgroundColor,
         ignoreElements: (el) => !!el.classList && (el.classList.contains('co-actions') || el.classList.contains('ov-print-shot'))
       });
+      page.classList.remove('ov-capture');
       const img = new Image();
       img.src = canvas.toDataURL('image/png');
       shot = document.createElement('div');

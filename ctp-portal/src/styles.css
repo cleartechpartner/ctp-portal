@@ -1000,3 +1000,14 @@ img.tm-avatar{object-fit:cover;background:var(--bg)}
 /* ===== Final polish: slideover complete control ===== */
 .tm-slideover-done{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;font-weight:600;color:var(--dim);cursor:pointer;white-space:nowrap}
 .tm-cal-dayrow .tm-done-check{flex-shrink:0}
+
+/* ===== Export PDF: pin the capture to the desktop layout ===== */
+/* The stacking rules above key on viewport width, so element width alone
+   cannot restore the desktop grid on small screens. These outrank them for
+   the duration of the capture. */
+.page.ov-capture{width:1200px!important;max-width:1200px!important}
+.page.ov-capture .ov-stats{grid-template-columns:repeat(6,1fr)!important}
+.page.ov-capture .ov-row.r2{grid-template-columns:3fr 2fr!important}
+.page.ov-capture .ov-row.r3,.page.ov-capture .ov-row.r4{grid-template-columns:1fr 1fr!important}
+.page.ov-capture .ov-feed a{grid-template-columns:30px 170px 88px 1fr auto!important}
+.page.ov-capture .ov-fc-kind{display:inline-block!important}
